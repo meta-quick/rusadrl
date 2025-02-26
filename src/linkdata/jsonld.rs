@@ -12,19 +12,139 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use anyhow::Error;
+use iref::IriBuf;
+use json_ld::Expand;
+use json_ld::ExpandedDocument;
+use json_ld::RemoteDocument;
+use json_ld::{syntax::{Parse, Value}};
+use reqwest::{Proxy};
+use super::httploader;
 
+
+#[derive(Default)]
+pub struct JsonLdHttpParser{
+    pub proxy: Option<Proxy>,
+}
+
+impl JsonLdHttpParser {
+    pub fn new(proxy: Option<Proxy>) -> Self {
+        Self {
+           proxy,
+        }
+    }
+
+    pub async  fn parse(&mut self, iri: String, val: String) -> Result<ExpandedDocument<IriBuf>, Error> {
+        let input = RemoteDocument::new(
+            // We use `IriBuf` as IRI type.
+            Some(IriBuf::new(iri).unwrap()),
+            // Optional content type.
+            Some("application/ld+json".parse().unwrap()),
+            // The actual content.
+            Value::parse_str(&val).expect("unable to parse document").0,
+        );
+
+
+        let mut loader = httploader::HttpLoader::new(self.proxy.clone());
+        let result =  input.expand(&mut loader).await;
+        match result {
+            Ok(document) => {
+               Ok(document) 
+            },
+            Err(e) => {
+                Err(anyhow::anyhow!("{}", e))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod test {
+    use super::*;
+    #[tokio::test]
+    async fn test_odrl_policy(){
+        let mut parse = JsonLdHttpParser::new(None);
+        let val = r#"
+            {
+                "@context": [
+                  "https://www.w3.org/ns/odrl.jsonld",
+                  {
+                    "title": "https://datasafe.io/ds/1.1/title",
+                    "creator": "https://datasafe.io/ds/1.1/creator",
+                    "dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
+                  }
+                ],
+                "type": "Policy",
+                "uid": "urn:uuid:12345678-90ab-cdef-1234-567890abcdef",
+                "permission": [
+                    {
+                    "action": "use",
+                    "target": "https://example.com/media/video1.mp4",
+                    "constraint": {
+                        "leftOperand": "date",
+                        "operator": "before",
+                        "rightOperand": "2025-12-31"
+                    }
+                    }
+                ],
+                "obligation": [
+                    {
+                    "action": "credit",
+                    "target": "https://example.com/creator/author1",
+                    "constraint": {
+                        "leftOperand": "license",
+                        "operator": "equals",
+                        "rightOperand": "CC-BY"
+                    }
+                    }
+                ],
+                "prohibition": [
+                    {
+                    "action": "copy",
+                    "target": "https://example.com/media/video1.mp4"
+                    }
+                ],
+                "Asset": [
+                    {
+                    "id": "https://example.com/media/video1.mp4",
+                    "type": "Video",
+                    "status": "active",
+                    "title": "Example Video",
+                    "creator": "Example Creator",
+                    "dateCreated": "2024-01-01"
+                    }
+                ]
+         }
+         "#;
+
+        let iri = "https://datasafe.com".to_string();
+
+        let document = parse.parse(iri, val.to_string()).await;
+
+        match document {
+            Ok(document) => {
+                println!("{:?}", document);
+            },
+            Err(e) => {
+                println!("{:?}", e);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_jsonld {
     use std::fmt::Debug;
 
     use iref::IriBuf;
-    use json_ld::{compaction, context_processing::ProcessedRef, object::{node::properties, Any}, print, rdf_types::vocabulary::no_vocabulary, syntax::{print::print_array, Parse, Value}, Compact, Flatten, Iri, RemoteDocument, RemoteDocumentReference};
+    use json_ld::{context_processing::ProcessedRef, object::Any, syntax::{Parse, Value}, Compact, Iri, RemoteDocument, RemoteDocumentReference};
     use reqwest::Proxy;
 
     use crate::linkdata::httploader;
 
     #[tokio::test]
-    async fn it_works() {
-        use json_ld::{JsonLdProcessor, RemoteDocument, syntax::{Value, Parse}};
+    async fn test_no_loader() {
+        use json_ld::{syntax::{Parse, Value}, JsonLdProcessor, RemoteDocument};
         use json_ld::iref::IriBuf;
 
         // Create a "remote" document by parsing a file manually.
@@ -85,12 +205,40 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_json_ld_mount() {
+    async fn test_fs_load() {
         use static_iref::iri;
         use json_ld::{JsonLdProcessor, Options, RemoteDocumentReference};
+
+        let input = RemoteDocumentReference::iri(iri!("https://example.com/sample.jsonld").to_owned());
+
+        // Use `FsLoader` to redirect any URL starting with `https://example.com/` to
+        // the local `example` directory. No HTTP query.
+        let mut loader = json_ld::FsLoader::default();
+        loader.mount(iri!("https://example.com/").to_owned(), "examples");
+
+        let expanded = input.expand(&mut loader)
+            .await
+            .expect("expansion failed");
+        for object in expanded {
+            if let Some(id) = object.id() {
+                let name = object.as_node().unwrap()
+                    .get_any(&IriBuf::new("http://xmlns.com/foaf/0.1/name".to_owned()).unwrap()).unwrap()
+                    .as_str().unwrap();
+                println!("id: {id}");
+
+                println!("name: {name}");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_json_ld_mount() {
+        use static_iref::iri;
+        use json_ld::{JsonLdProcessor, RemoteDocumentReference};
         
-        let input: RemoteDocumentReference = RemoteDocumentReference::iri(iri!("https://json-ld.org/contexts/person.jsonld").to_owned());
+        let input: RemoteDocumentReference = RemoteDocumentReference::iri(iri!("http://192.168.12.7:8000/contexts/person.jsonld").to_owned());
         
+        // let mut loader = httploader::HttpLoader::new(Some(Proxy::https("192.168.12.51:9981").unwrap()));
         let mut loader = httploader::HttpLoader::new(None);
         // loader.mount(iri!("https://json-ld.org/").to_owned(), "examples");
 
@@ -103,13 +251,68 @@ mod test {
 
         match expanded {
             Ok(expanded) => {
-                println!("expanded: {expanded:#?}");
+                for object in expanded{
+                    println!("{:?}", object.as_node().unwrap().properties());
+                }
             },
             Err(err) => {
                 println!("error: {err:#?}");
             }
         }
     }
+
+    #[tokio::test]
+    async fn test_json_http_with_context() {
+        use json_ld::{syntax::{Parse, Value}, JsonLdProcessor, RemoteDocument};
+        use json_ld::iref::IriBuf;
+
+        // Create a "remote" document by parsing a file manually.
+        let input = RemoteDocument::new(
+            // We use `IriBuf` as IRI type.
+            Some(IriBuf::new("https://datasafe.com/persion.jsonld".to_owned()).unwrap()),
+
+            // Optional content type.
+            Some("application/ld+json".parse().unwrap()),
+
+            // Parse the file.
+            Value::parse_str(r#"
+            {
+              "@context": "https://json-ld.org/contexts/person.jsonld",
+              "@id": "http://dbpedia.org/resource/John_Lennon",
+              "name": "John Lennon",
+              "born": "1940-10-09",
+              "spouse": "http://dbpedia.org/resource/Cynthia_Lennon"
+            }"#).expect("unable to parse file").0
+        );
+
+        let mut loader = httploader::HttpLoader::new(None);
+        let expanded = input
+            .expand(&mut loader)
+            .await
+            .expect("expansion failed");
+
+        for object in expanded {
+            if let Some(id) = object.id() {
+                let name = object.as_node().unwrap()
+                    .get_any(&IriBuf::new("http://xmlns.com/foaf/0.1/name".to_owned()).unwrap()).unwrap()
+                    .as_str().unwrap();
+
+                let born = object.as_node().unwrap()
+                    .get_any(&IriBuf::new("http://schema.org/birthDate".to_owned()).unwrap()).unwrap()
+                    .as_str().unwrap();
+
+                let spouse = object.as_node().unwrap()
+                    .get_any(&IriBuf::new("http://schema.org/spouse".to_owned()).unwrap()).unwrap()
+                    .as_str().unwrap();
+
+                println!("id: {id}");
+                println!("name: {name}");
+                println!("born: {born}");
+                println!("spouse: {spouse}");
+            }
+        }
+    }
+
 
     #[tokio::test]
     async fn test_phantom_data() {
@@ -137,7 +340,7 @@ mod test {
 
     #[tokio::test]
     async fn test_http_loader() {
-        use json_ld::{JsonLdProcessor, RemoteDocument, syntax::{Value, Parse}};
+        use json_ld::{syntax::{Parse, Value}, JsonLdProcessor, RemoteDocument};
         use json_ld::iref::IriBuf;
 
         // Create a "remote" document by parsing a file manually.
@@ -186,8 +389,8 @@ mod test {
 
 
     #[tokio::test]
-    async fn test_http_xloader() {
-        use json_ld::{JsonLdProcessor, RemoteDocument, syntax::{Value, Parse}};
+    async fn test_http_loader_compact() {
+        use json_ld::{syntax::{Parse, Value}, JsonLdProcessor, RemoteDocument};
         use json_ld::iref::IriBuf;
 
         // Create a "remote" document by parsing a file manually.
@@ -216,7 +419,7 @@ mod test {
             }"#).expect("unable to parse file").0
         );
 
-        let mut loader = httploader::HttpLoader::new(Some(Proxy::https("192.168.12.57:9981").unwrap()));
+        let mut loader = httploader::HttpLoader::new(Some(Proxy::https("192.168.12.51:9981").unwrap()));
         let expanded = input
             .expand(&mut loader)
             .await;
@@ -240,39 +443,11 @@ mod test {
         }
 
         println!("compacted: {compacted:#?}");
-
-
-        // let expanded = expanded.unwrap();
-        // for object in expanded {
-        //     if let Some(id) = object.id() {
-        //         let name = object.as_node().unwrap()
-        //         .get_any(&IriBuf::new("https://datasafe.io/1.1/name".to_owned()).unwrap()).unwrap()
-        //         .as_str().unwrap();
-
-        //         let job_title = object.as_node().unwrap()
-        //         .get_any(&IriBuf::new("https://datasafe.io/1.1/jobTitle".to_owned()).unwrap()).unwrap()
-        //         .as_str().unwrap();
-
-        //         let telephone = object.as_node().unwrap()
-        //         .get_any(&IriBuf::new("https://datasafe.io/1.1/telephone".to_owned()).unwrap()).unwrap()
-        //         .as_str().unwrap();
-
-        //         let url = object.as_node().unwrap()
-        //         .get_any(&IriBuf::new("https://datasafe.io/1.1/url".to_owned()).unwrap()).unwrap()
-        //         .as_str().unwrap();
-
-        //         println!("id: {id}");
-        //         println!("name: {name}");
-        //         println!("jobTitle: {job_title}");
-        //         println!("telephone: {telephone}");
-        //         println!("url: {url}");
-        //     }
-        // }
     }
 
     #[tokio::test]
     async fn test_json_ld_document() {
-        use json_ld::{JsonLdProcessor, RemoteDocument, syntax::{Value, Parse}};
+        use json_ld::{syntax::{Parse, Value}, JsonLdProcessor, RemoteDocument};
         use json_ld::iref::IriBuf;
         use crate::linkdata::httploader;
 
@@ -393,9 +568,6 @@ mod test {
 
     #[tokio::test]
     async fn test_rdf_json() {
-        use serde_json::json;
-
-
         #[derive(linked_data::Serialize,Debug)]
         #[ld(prefix("ex" = "http://example.org/"))]
         struct Foo {
@@ -447,6 +619,50 @@ mod test {
             }
         }
     }
+}
 
+#[cfg(test)]
+mod test_sophia {
+    use sophia::api::source::Source;
+    use sophia::jsonld::{JsonLdOptions, JsonLdQuadSource};
+    use sophia::jsonld::loader::HttpLoader;
+    use sophia::jsonld::loader_factory::{DefaultLoaderFactory};
 
+    #[test]
+    fn test_sophia_jsonld() {
+        use sophia::jsonld::JsonLdParser;
+        use sophia::api::prelude::*;
+        use sophia::inmem::graph::LightGraph;
+
+        let example = r#"{
+              "@context": "https://json-ld.org/contexts/person.jsonld",
+              "@id": "http://dbpedia.org/resource/John_Lennon",
+              "name": "John Lennon",
+              "born": "1940-10-09",
+              "spouse": "http://dbpedia.org/resource/Cynthia_Lennon"
+        }"#;
+
+        // Parse the JSON-LD into a graph
+        let parser: JsonLdParser<DefaultLoaderFactory<HttpLoader>> = JsonLdParser::<DefaultLoaderFactory<HttpLoader>>::
+            new_with_options(JsonLdOptions::default());
+        let quad_source =  parser.parse_str(example);
+
+        match quad_source {
+            JsonLdQuadSource::Quads(quads) => {
+                println!("----------------------------");
+                for quad in quads {
+                   let triples = quad.into_triple();
+                   let sub = triples.clone().to_s();
+                   let pred = triples.clone().to_p();
+                   let obj = triples.clone().to_o();
+                   println!(" sub: {sub:#?}");
+                   println!(" pred: {pred:#?}");
+                   println!(" obj: {obj:#?}");
+                }
+            },
+            JsonLdQuadSource::Err(err) => {
+                println!("error: {err:#?}");
+            }
+        }
+    }
 }

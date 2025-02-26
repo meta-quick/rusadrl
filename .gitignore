@@ -1,0 +1,8 @@
+*.DS_Store
+
+# IDE-specific files
+.idea/
+.vscode/
+
+# Binary files created by the project
+target/

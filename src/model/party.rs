@@ -23,7 +23,7 @@ pub struct PartyCollection {
     pub metadata: Metadata,
 }
 
-#[derive(Default, Builder， Debug, Clone)]
+#[derive(Default, Builder, Debug, Clone)]
 pub struct Party {
     pub metadata: Metadata,
     pub part_of: Vec<PartyCollection>,
