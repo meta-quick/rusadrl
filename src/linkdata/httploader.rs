@@ -17,9 +17,10 @@ use json_ld::LoadError;
 use json_ld::{Loader, RemoteDocument, syntax::Value};
 use json_ld::iref::{Iri, IriBuf};
 use reqwest::{Client, Proxy};
-use tokio::time::error::Elapsed;
 use std::collections::HashMap;
 use std::sync::Arc;
+use json_ld_core::fs::Error;
+use linked_data::json_syntax;
 
 pub struct HttpLoader {
     client: Client,
@@ -31,13 +32,13 @@ impl HttpLoader {
         match proxy {
             Some(proxy) => {
                 HttpLoader {
-                    client: Client::builder().proxy(proxy).build().unwrap(),
+                    client: Client::builder().proxy(proxy).gzip(true).build().unwrap(),
                     cache: Arc::new(std::sync::Mutex::new(HashMap::new())),
                 }
             },
             None => {
                 HttpLoader {
-                    client: Client::new(),
+                    client: Client::builder().gzip(true).build().unwrap(),
                     cache: Arc::new(std::sync::Mutex::new(HashMap::new())),
                 }
                 
@@ -62,23 +63,16 @@ impl Loader for HttpLoader {
         // Fetch the document using HTTP
         let response = self.client.get(iri.as_str()).send().await;
 
-     
-
         match response {
             Ok(resp) => {
                 if resp.status().is_success() {
                     // Parse the content into JSON-LD
                     let content = resp.text().await.map_err(|e| LoadError::new(iri.clone(), e) )?;
-                    let mut result = Value::parse_str(&content);
 
-                    if let Err(_) = &result {
-                        result = Value::parse_str("{\"@context\": \"https://schema.org/\"}");
-                    }
-                    let  value = result.unwrap().0;
+                    let (doc, _) = json_syntax::Value::parse_str(&content)
+                        .map_err(|e| LoadError::new(url.to_owned(), Error::Parse(e)))?;
 
-                    // Create the RemoteDocument
-                    let aplication_json: mime::Mime = "application/ld+json".parse().unwrap();
-                    let document = RemoteDocument::new(Some(iri.clone()), Some(aplication_json), value);
+                    let document = RemoteDocument::new(Some(url.to_owned()), Some("application/ld+json".parse().unwrap()), doc);
 
                     // Cache the document
                     {
@@ -102,18 +96,19 @@ mod test {
 
     #[tokio::test]
     async fn test_request(){
-        let proxy = Proxy::https("192.168.12.57:9981").unwrap();
+        let proxy = Proxy::https("http://192.168.12.51:9981").unwrap();
 
         let url = "https://schema.org/";
-        let client = Client::builder().proxy(proxy).build().unwrap();
+        // let url = "https://www.baidu.com/";
+        let client = Client::builder().proxy(proxy).gzip(true).build().unwrap();
 
         let response = client.get(url).send().await;
         match response {
             Ok(resp) => {
                 if resp.status().is_success() {
-                    // Parse the content into JSON-LD
+                    println!("Headers: {:?}", resp.headers());
                     let content = resp.text().await.unwrap();
-                    println!("{content}");
+                    println!("Body: {:#?}", content);
                 }else {
                     println!("err");
                 }
