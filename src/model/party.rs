@@ -13,29 +13,32 @@
 // limitations under the License.
 
 #![allow(dead_code)]
+#![allow(non_snake_case)]
+
+use iref::IriBuf;
+use lombok::{Getter,Builder,Setter,GetterMut};
 
 use crate::model::metadata::Metadata;
-use crate::model::constraint::Constraint;
-use lombok::Builder;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug,Builder,Getter,GetterMut,Setter, Default, Clone)]
 pub struct PartyCollection {
+    pub source: Option<IriBuf>,
     pub metadata: Metadata,
 }
 
-#[derive(Default, Builder, Debug, Clone)]
+#[derive(Debug,Builder,Getter,GetterMut,Setter, Default, Clone)]
 pub struct Party {
+    pub uid: Option<IriBuf>,
+    pub partOf: Vec<IriBuf>,
     pub metadata: Metadata,
-    pub part_of: Vec<PartyCollection>,
-    pub refinements: Vec<Constraint>,
 }
 
 impl Party {
     pub fn new() -> Self {
         Party {
+            uid: None,
             metadata: Metadata::new(),
-            part_of: Vec::new(),
-            refinements: Vec::new(),
+            partOf: Vec::new()
         }
     }
 }

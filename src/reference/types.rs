@@ -14,31 +14,27 @@
 
 #![allow(dead_code)]
 
-pub enum ReferenceType {
-    PolicySet,
-    PolicyRequest,
-    PolicyOffer,
-    PolicyCC,
-    PolicyAgreement,
-    PolicyTicket,
-    PolicyAssertion,
-    PolicyPrivacy,
+#[derive(Debug,Default,PartialEq, Eq, Clone)]
+pub enum PolicyClassType {
+    SET,
+    OFFER,
+    AGREEMENT,
+    #[default]
+    NONE,
 }
 
-impl ReferenceType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ReferenceType::PolicySet => "http://www.w3.org/ns/odrl/2/Set",
-            ReferenceType::PolicyRequest => "http://www.w3.org/ns/odrl/2/Request",
-            ReferenceType::PolicyOffer => "http://www.w3.org/ns/odrl/2/Offer",
-            ReferenceType::PolicyCC => "http://www.w3.org/ns/odrl/2/CC",
-            ReferenceType::PolicyAgreement => "http://www.w3.org/ns/odrl/2/Agreement",
-            ReferenceType::PolicyTicket => "http://www.w3.org/ns/odrl/2/Ticket",
-            ReferenceType::PolicyAssertion => "http://www.w3.org/ns/odrl/2/Assertion",
-            ReferenceType::PolicyPrivacy => "http://www.w3.org/ns/odrl/2/Privacy",
+impl TryFrom<String> for PolicyClassType {
+    type Error = anyhow::Error;
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        match s.to_lowercase().as_str() {
+            "set" => Ok(PolicyClassType::SET),
+            "offer" => Ok(PolicyClassType::OFFER),
+            "aggrement" => Ok(PolicyClassType::AGREEMENT),
+            _ => Ok(PolicyClassType::NONE),
         }
     }
 }
+
 
 #[derive(Debug,Default,PartialEq, Eq, Clone)]
 pub enum RuleType {
@@ -48,8 +44,10 @@ pub enum RuleType {
     Duty,
 }
 
-impl RuleType {
-    pub const RULE_PERMISSION: i32 = 0;
-    pub const RULE_PROHIBITION: i32 = 1;
-    pub const RULE_DUTY: i32 = 2;
+#[derive(Debug,Default,PartialEq, Eq, Clone)]
+pub enum ConflictTerm {
+    Perm,
+    Prohibit,
+    #[default]
+    Invalid,
 }

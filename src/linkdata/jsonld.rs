@@ -123,7 +123,15 @@ mod test {
 
         match document {
             Ok(document) => {
-                println!("{:?}", document);
+                for object in document {
+                    if let Some(id) = object.id() {
+                        let telephone = object.as_node().unwrap()
+                        .get_any(&IriBuf::new("http://www.w3.org/ns/odrl/2/Asset".to_owned()).unwrap()).unwrap();
+                
+                        println!("id: {id}");
+                        println!("telephone: {telephone:#?}");
+                    }
+                }
             },
             Err(e) => {
                 println!("{:?}", e);
