@@ -14,9 +14,8 @@
 
 #![allow(dead_code)]
 
-pub trait Resource {
-
-}
-
-pub trait Model {
+pub trait LogicEval {
+    fn eval(&self) -> bool {
+        
+    }
 }

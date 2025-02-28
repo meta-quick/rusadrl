@@ -13,49 +13,184 @@
 // limitations under the License.
 
 #![allow(dead_code)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
+use iref::IriBuf;
+use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::metadata::Metadata;
 
-#[derive(Debug,Default, Clone)]
+pub enum Operator {
+    eq,
+    gt,
+    gteq,
+    hasPart,
+    isA,
+    isAllOf,
+    ifAnyOf,
+    ifNoneOf,
+    ifPartOf,
+    lt,
+    lteq,
+    neq,
+}
+
+impl TryFrom<&str> for Operator {
+    type Error = anyhow::Error;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "eq" => Ok(Operator::eq),
+            "gt" => Ok(Operator::gt),
+            "gteq" => Ok(Operator::gteq),
+            "hasPart" => Ok(Operator::hasPart),
+            "isA" => Ok(Operator::isA),
+            "isAllOf" => Ok(Operator::isAllOf),
+            "ifAnyOf" => Ok(Operator::ifAnyOf),
+            "ifNoneOf" => Ok(Operator::ifNoneOf),
+            "ifPartOf" => Ok(Operator::ifPartOf),
+            "lt" => Ok(Operator::lt),
+            "lteq" => Ok(Operator::lteq),
+            "neq" => Ok(Operator::neq),
+            _ => Err(anyhow::anyhow!("Invalid operator: {}", value)),
+        }
+    }
+}
+
+pub enum LeftOperandClass {
+    absolutePosition, 
+    absoluteSize,
+    absoluteSpatialPosition,
+    absoluteTemporalPosition,
+    count,
+    dateTime,
+    delayPeriod,
+    deliveryChannel,
+    device,
+    elapsedTime,
+    event,
+    fileFormat,
+    industry,
+    language,
+    media,
+    meteredTime,
+    payAmount,
+    percentage,
+    product,
+    purpose,
+    recipient,
+    relativePosition,
+    relativeSize,
+    relativeSpatialPosition,
+    relativeTemporalPosition,
+    resolution,
+    spatial,
+    spatialCoordinates,
+    system,
+    systemDevice,
+    timeInterval,
+    unitOfCount,
+    version,
+    virtualLocation
+}
+
+impl TryFrom<&str> for LeftOperandClass {
+    type Error = anyhow::Error;
+    fn try_from(val: &str) -> Result<Self, Self::Error> {
+        let input = val.to_lowercase();
+        match input.as_str() {
+            absolutePosition=> Ok(LeftOperandClass::absolutePosition),
+            absoluteSize => Ok(LeftOperandClass::absoluteSize),
+            absoluteSpatialPosition => Ok(LeftOperandClass::absoluteSpatialPosition),
+            absoluteTemporalPosition=> Ok(LeftOperandClass::absoluteTemporalPosition),
+            count=> Ok(LeftOperandClass::count),
+            dateTime=> Ok(LeftOperandClass::dateTime),
+            delayPeriod=> Ok(LeftOperandClass::delayPeriod),
+            deliveryChannel=> Ok(LeftOperandClass::deliveryChannel),
+            device=> Ok(LeftOperandClass::device),
+            elapsedTime=> Ok(LeftOperandClass::elapsedTime),
+            event=> Ok(LeftOperandClass::event),
+            fileFormat=> Ok(LeftOperandClass::fileFormat),
+            industry=> Ok(LeftOperandClass::industry),
+            language=> Ok(LeftOperandClass::language),
+            media=> Ok(LeftOperandClass::media),
+            meteredTime=> Ok(LeftOperandClass::meteredTime),
+            payAmount=> Ok(LeftOperandClass::payAmount),
+            percentage=> Ok(LeftOperandClass::percentage),
+            product=> Ok(LeftOperandClass::product),
+            purpose=> Ok(LeftOperandClass::purpose),
+            recipient=> Ok(LeftOperandClass::recipient),
+            relativePosition=> Ok(LeftOperandClass::relativePosition),
+            relativeSize=> Ok(LeftOperandClass::relativeSize),
+            relativeSpatialPosition=> Ok(LeftOperandClass::relativeSpatialPosition),
+            relativeTemporalPosition=> Ok(LeftOperandClass::relativeTemporalPosition),
+            resolution=> Ok(LeftOperandClass::resolution),
+            spatial=> Ok(LeftOperandClass::spatial),
+            spatialCoordinates=> Ok(LeftOperandClass::spatialCoordinates),
+            system=> Ok(LeftOperandClass::system),
+            systemDevice=> Ok(LeftOperandClass::systemDevice),
+            timeInterval=> Ok(LeftOperandClass::timeInterval),
+            unitOfCount=> Ok(LeftOperandClass::unitOfCount),
+            version=> Ok(LeftOperandClass::version),
+            virtualLocation=> Ok(LeftOperandClass::virtualLocation),
+            _ => Err(anyhow::anyhow!("Invalid left operand class: {}", val)),
+        }
+    }
+}
+
+pub struct LeftOperand {
+    pub class: LeftOperandClass,
+    pub value: String,
+}
+
+pub enum RightOperand {
+    Literal(String),
+    Set(Vec<IriBuf>),
+    RightOperandReference(IriBuf),
+}
+
+#[derive(Debug,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Constraint {
-    pub metadata: Metadata,
+    pub uid: Option<IriBuf>,
+
+    //Identifier: http://www.w3.org/ns/odrl/2/unit
+    pub unit: String,
+    //Identifier: http://www.w3.org/ns/odrl/2/status
+    pub status: bool,
+    //Identifier: http://www.w3.org/ns/odrl/2/dataType
+    //JSONLD: @type
+    pub dataType: String,
+    //Identifier: http://www.w3.org/ns/odrl/2/Operator
     pub operator: String,
-    pub left_operand: String,
-    pub right_operand: String,
+
+    pub leftOperand: LeftOperand,
+    pub rightOperand: RightOperand,
+    pub metadata: Metadata,
+}
+
+impl Default for Constraint {
+    fn default() -> Self {
+        Constraint::new("http://www.w3.org/ns/odrl/2/Constraint")
+    }
 }
 
 impl Constraint {
-    pub fn new() -> Self {
+    /*
+     * Identifier: 
+     *   http://www.w3.org/ns/odrl/2/Constraint
+     */
+    pub fn new(iri: &str) -> Self {
+        let uid = String::from(iri);
         Constraint {
-            metadata: Metadata::new(),
+            uid: Some(IriBuf::new(uid).unwrap()),
+            unit: String::new(),
+            status: false,
+            dataType: String::new(),
             operator: String::new(),
-            left_operand: String::new(),
-            right_operand: String::new(),
-        }
-    }
-
-    pub fn from(operator: String, left_operand: String, right_operand: String) -> Self {
-        Constraint {
+            leftOperand: String::new(),
+            rightOperand: String::new(),
             metadata: Metadata::new(),
-            operator,
-            left_operand,
-            right_operand,
         }
-    }
-
-    pub fn set_metadata(&mut self, metadata: Metadata) {
-        self.metadata = metadata;
-    }
-
-    pub fn set_operator(&mut self, operator: String) {
-        self.operator = operator;
-    }
-
-    pub fn set_left_operand(&mut self, left_operand: String) {
-        self.left_operand = left_operand;
-    }
-    
-    pub fn set_right_operand(&mut self, right_operand: String) {
-        self.right_operand = right_operand;
     }
 }
+
+

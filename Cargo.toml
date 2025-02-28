@@ -18,7 +18,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-thiserror = { version = "1.0" }
+thiserror = { version = "2" }
 anyhow = { version = "1.0" }
 lombok = { version = "0.4"}
 sophia = { version = "0.9.0", features = ["jsonld","http_client"] }

@@ -14,14 +14,14 @@
 
 #![allow(dead_code)]
 #![warn(non_snake_case)]
+use std::collections::HashMap;
+use lombok::{Builder, Getter, GetterMut, Setter};
+use crate::traits::display::PrettyPrint;
 
-use crate::traits::display::DisplayInfo;
-
-#[derive(Debug,Default,Clone)]
+#[derive(Debug,Builder,Setter,Getter,GetterMut,Default,Clone)]
 pub struct Metadata {
-    pub uri: String,
     pub close_matches: Vec<String>,
-    pub labels: Vec<String>,
+    pub tags: HashMap<String, String>,
     pub identifier: String,
     pub comment: String,
     pub see_also: String,
@@ -31,20 +31,32 @@ pub struct Metadata {
     pub source: String,
 }
 
-impl DisplayInfo for Metadata {
-    fn display(&self) {
-        println!("Identifier: {}", self.identifier);
-        println!("Title: {}", self.title);
-        println!("Comment: {}", self.comment);
+impl PrettyPrint for Metadata {
+    fn display(&self) -> String {
+        let mut sb = String::new();
+        sb.push_str("---------metadata---------\n");
+        sb.push_str(&format!("  Identifier: {}\n", self.identifier));
+        sb.push_str(&format!("  Title: {}\n", self.title));
+        sb.push_str(&format!("  Comment: {}\n", self.comment));
+        sb.push_str(&format!("  See Also: {}\n", self.see_also));
+        sb.push_str(&format!("  Definition: {}\n", self.definition));
+        sb.push_str(&format!("  Source: {}\n", self.source));
+        sb.push_str(&format!("  Tags: {}\n", "{"));
+
+        for (k, v) in self.tags.iter() {
+            sb.push_str(&format!("   {}: {}\n", k, v));
+        }
+        sb.push_str(&format!("  {}", "}"));
+
+        sb
     }
 }
 
 impl Metadata {
     pub fn new() -> Self {
         Metadata {
-            uri: String::new(),
             close_matches: Vec::new(),
-            labels: Vec::new(),
+            tags: HashMap::new(),
             identifier: String::new(),
             comment: String::new(),
             see_also: String::new(),
@@ -54,84 +66,25 @@ impl Metadata {
             source: String::new(),
         }
     }
+}
 
-    pub fn add_label(&mut self, label: String) {
-        self.labels.push(label);
-    }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    pub fn set_uri(&mut self, uri: String) {
-        self.uri = uri;
-    }
-
-    pub fn set_close_matches(&mut self, close_matches: Vec<String>) {
-        self.close_matches = close_matches;
-    }
-
-    pub fn set_identifier(&mut self, identifier: String) {
-        self.identifier = identifier;
-    }
-
-    pub fn set_comment(&mut self, comment: String) {
-        self.comment = comment;
-    }
-
-    pub fn set_see_also(&mut self, see_also: String) {
-        self.see_also = see_also;
-    }
-
-    pub fn set_title(&mut self, title: String) {
-        self.title = title;
-    }
-
-    pub fn set_note(&mut self, note: String) {
-        self.note = note;
-    }
-
-    pub fn set_definition(&mut self, definition: String) {
-        self.definition = definition;
-    }
-
-    pub fn set_source(&mut self, source: String) {
-        self.source = source;
-    }
-
-    pub fn get_labels(&self) -> &Vec<String> {
-        &self.labels
-    }
-
-    pub fn get_identifier(&self) -> &String {
-        &self.identifier
-    }
-
-    pub fn get_comment(&self) -> &String {
-        &self.comment
-    }
-
-    pub fn get_see_also(&self) -> &String {
-        &self.see_also
-    }
-
-    pub fn get_title(&self) -> &String {
-        &self.title
-    }
-
-    pub fn get_note(&self) -> &String {
-        &self.note
-    }
-
-    pub fn get_definition(&self) -> &String {
-        &self.definition
-    }
-
-    pub fn get_source(&self) -> &String {
-        &self.source
-    }
-
-    pub fn get_uri(&self) -> &String {
-        &self.uri
-    }
-
-    pub fn get_close_matches(&self) -> &Vec<String> {
-        &self.close_matches
+    #[test]
+    fn test_metadata() {
+        let mut m = Metadata::new();
+        m.set_identifier("test".to_string());
+        m.set_title("test".to_string());
+        m.set_comment("test".to_string());
+        m.set_see_also("test".to_string());
+        m.set_definition("test".to_string());
+        m.set_source("test".to_string());
+        let mut tags: HashMap<String, String> = HashMap::new();
+        tags.insert("test".to_string(), "test".to_string());
+        tags.insert("name".to_owned(), "test".to_owned());
+        m.set_tags(tags);
+        println!("{}", m.display());
     }
 }

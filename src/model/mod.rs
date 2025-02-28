@@ -23,3 +23,4 @@ mod resource_model;
 mod duty;
 mod permission;
 mod prohibition;
+pub mod error;

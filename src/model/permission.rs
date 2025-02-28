@@ -29,14 +29,14 @@ pub struct Permission {
 impl Permission {
     pub fn new() -> Permission {
         let mut permission = Permission::default();
-        permission.rule.set_rule_type(RuleType::Permission);
+        // permission.rule.set_rule_type(RuleType::Permission);
         permission
     }
 
     pub fn with_uri(uri: String) -> Permission {
         let mut permission = Permission::default();
-        permission.rule.set_rule_type(RuleType::Permission);
-        permission.rule.set_uri(uri);
+        // permission.rule.set_rule_type(RuleType::Permission);
+        // permission.rule.set_uri(uri);
         permission
     }
 

@@ -14,6 +14,6 @@
 
 #![allow(dead_code)]
 
-pub trait DisplayInfo {
-    fn display(&self);
+pub trait PrettyPrint {
+    fn display(&self) -> String;
 }
