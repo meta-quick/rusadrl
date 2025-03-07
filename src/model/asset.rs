@@ -19,11 +19,9 @@ use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 
 use crate::model::metadata::Metadata;
-use crate::traits::validate::Validate;
-
 use super::constraint::Constraint;
-use super::error::OdrlError;
 
+//http://www.w3.org/ns/odrl/2/AssetCollection
 #[derive(Debug,Builder,Getter,GetterMut,Setter, Default, Clone)]
 pub struct AssetCollection {
     pub source  : Option<IriBuf>,
@@ -31,6 +29,8 @@ pub struct AssetCollection {
     pub metadata: Metadata,
 }
 
+
+//http://www.w3.org/ns/odrl/2/Asset
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Asset {
     pub uid: Option<IriBuf>,
@@ -41,42 +41,4 @@ pub struct Asset {
     pub metadata: Option<Metadata>,
 }
 
-impl Validate for Asset {
-    fn validate(&self) -> Result<(), OdrlError> {
-        let uid = self.get_uid();
-        match uid {
-            Some(_) => {
-                Ok(())
-            },
-            None => {
-                Err(OdrlError::InvalidAssetIRI)
-            }
-        }
-    }
-}
 
-impl Asset {
-    pub fn new(uri: String) -> Self {
-        let mut asset = Asset::default();
-        asset.set_uid(Some(IriBuf::new(uri).unwrap()));
-        asset
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_asset_validation() {
-        let asset = Asset::default();
-        assert!(asset.validate().is_err());
-    }
-
-    #[test]
-    fn test_valid_asset() {
-        let uri = "http://data.org/1".to_string();
-        let asset = Asset::new(uri);
-        assert!(asset.validate().is_ok());
-    }
-}

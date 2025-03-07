@@ -22,6 +22,7 @@ use crate::model::metadata::Metadata;
 
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Action {
+    pub actionType: ActionType,
     pub includedIn: Option<Vec<Action>>,
     pub implies: Option<Vec<Action>>,
     pub refinements: Option<Vec<Constraint>>,
@@ -34,21 +35,7 @@ impl Action {
     }
 
     pub fn evaluate(&self, action: Action) -> bool {
-        if self.includedIn.is_some() {
-            for includedIn in self.includedIn.as_ref().unwrap() {
-                if includedIn.evaluate(action.clone()) {
-                    return true;
-                }
-            }
-        }
-
-        if self.implies.is_some() {
-            for implies in self.implies.as_ref().unwrap() {
-                if implies.evaluate(action.clone()) {
-                    return true;
-                }
-            }
-        }
+        //TODO: Implement this method
         return false;
     }
 }
