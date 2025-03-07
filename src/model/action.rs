@@ -27,3 +27,188 @@ pub struct Action {
     pub refinements: Option<Vec<Constraint>>,
     pub metadata: Metadata,
 }
+
+impl Action {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn evaluate(&self, action: Action) -> bool {
+        if self.includedIn.is_some() {
+            for includedIn in self.includedIn.as_ref().unwrap() {
+                if includedIn.evaluate(action.clone()) {
+                    return true;
+                }
+            }
+        }
+
+        if self.implies.is_some() {
+            for implies in self.implies.as_ref().unwrap() {
+                if implies.evaluate(action.clone()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+}
+
+pub enum ActionType {
+    //http://www.w3.org/ns/odrl/2/acceptTracking
+    AcceptTracking,
+    //http://www.w3.org/ns/odrl/2/aggregate
+    Aggregate,
+    //http://www.w3.org/ns/odrl/2/annotate
+    Annotate,
+    //http://www.w3.org/ns/odrl/2/anonymize
+    Anonymize,
+    //http://www.w3.org/ns/odrl/2/archive
+    Archive,
+    //http://www.w3.org/ns/odrl/2/attribute
+    Attribute,
+    //http://creativecommons.org/ns#Attribution
+    Attribution,
+    //http://creativecommons.org/ns#CommericalUse
+    CommericalUse,
+    //http://www.w3.org/ns/odrl/2/compensate
+    Compensate,
+    //http://www.w3.org/ns/odrl/2/concurrentUse
+    ConcurrentUse,
+    //http://www.w3.org/ns/odrl/2/delete
+    Delete,
+    //http://www.w3.org/ns/odrl/2/derive
+    Derive,
+    //http://creativecommons.org/ns#DerivativeWorks
+    Derivative,
+    //http://www.w3.org/ns/odrl/2/digitize
+    Digitize,
+    //http://www.w3.org/ns/odrl/2/display
+    Display,
+    //http://www.w3.org/ns/odrl/2/distribute
+    Distribute,
+    //	http://creativecommons.org/ns#Distribution
+    Distribution,
+    //http://www.w3.org/ns/odrl/2/ensureExclusivity
+    EnsureExclusivity,
+    //http://www.w3.org/ns/odrl/2/execute
+    Execute,
+    //http://www.w3.org/ns/odrl/2/extract
+    Extract,
+    //http://www.w3.org/ns/odrl/2/give
+    Give,
+    //http://www.w3.org/ns/odrl/2/grantUse
+    GrantUse,
+    //http://www.w3.org/ns/odrl/2/include
+    Include,
+    //http://www.w3.org/ns/odrl/2/index
+    Index,
+    //http://www.w3.org/ns/odrl/2/inform
+    Inform,
+    //http://www.w3.org/ns/odrl/2/install
+    Install,
+    //http://www.w3.org/ns/odrl/2/modifiy
+    Modify,
+    //http://www.w3.org/ns/odrl/2/move
+    Move,
+    //http://www.w3.org/ns/odrl/2/nextPolicy
+    NextPolicy,
+    //http://creativecommons.org/ns#Notice
+    Notice,
+    //http://www.w3.org/ns/odrl/2/obtainConsent
+    ObtainConsent,
+    //http://www.w3.org/ns/odrl/2/play
+    Play,
+    //http://www.w3.org/ns/odrl/2/present
+    Present,
+    //http://www.w3.org/ns/odrl/2/print
+    Print,
+    //http://www.w3.org/ns/odrl/2/read
+    Read,
+    //http://www.w3.org/ns/odrl/2/reproduce
+    Reproduce,
+    //http://creativecommons.org/ns#Reproduction
+    Reproduction,
+    //http://www.w3.org/ns/odrl/2/reviewPolicy
+    ReviewPolicy,
+    //http://www.w3.org/ns/odrl/2/sell
+    Sell,
+    //http://creativecommons.org/ns#ShareAlike
+    ShareAlike,
+    //http://creativecommons.org/ns#Sharing
+    Sharing,
+    //http://creativecommons.org/ns#SourceCode
+    SourceCode,
+    //http://www.w3.org/ns/odrl/2/stream
+    Stream,
+    //http://www.w3.org/ns/odrl/2/synchronize
+    Synchronize,
+    //http://www.w3.org/ns/odrl/2/textToSpeech
+    TextToSpeech,
+    //http://www.w3.org/ns/odrl/2/transform
+    Transform,
+    //http://www.w3.org/ns/odrl/2/translate
+    Translate, 
+    //http://www.w3.org/ns/odrl/2/uninstall
+    Uninstall,
+    //http://www.w3.org/ns/odrl/2/watermark
+    Watermark
+}
+
+impl TryFrom<&str> for ActionType {
+    type Error = String;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let value = value.to_lowercase();
+        match value.as_str() {
+            "acceptTracking" => Ok(ActionType::AcceptTracking),
+            "aggregate" => Ok(ActionType::Aggregate),
+            "annotate" => Ok(ActionType::Annotate),
+            "anonymize" => Ok(ActionType::Anonymize),
+            "archive" => Ok(ActionType::Archive),
+            "attribute" => Ok(ActionType::Attribute),
+            "attribution" => Ok(ActionType::Attribution),
+            "commericalUse" => Ok(ActionType::CommericalUse),
+            "compensate" => Ok(ActionType::Compensate),
+            "concurrentUse" => Ok(ActionType::ConcurrentUse),
+            "delete" => Ok(ActionType::Delete),
+            "derive" => Ok(ActionType::Derive),
+            "derivative" => Ok(ActionType::Derivative),
+            "digitize" => Ok(ActionType::Digitize),
+            "display" => Ok(ActionType::Display),
+            "distribute" => Ok(ActionType::Distribute),
+            "distribution" => Ok(ActionType::Distribution),
+            "ensureExclusivity" => Ok(ActionType::EnsureExclusivity),
+            "execute" => Ok(ActionType::Execute),
+            "extract" => Ok(ActionType::Extract),
+            "give" => Ok(ActionType::Give),
+            "grantUse" => Ok(ActionType::GrantUse),
+            "include" => Ok(ActionType::Include),
+            "index" => Ok(ActionType::Index),
+            "inform" => Ok(ActionType::Inform),
+            "install" => Ok(ActionType::Install),
+            "modify" => Ok(ActionType::Modify),
+            "move" => Ok(ActionType::Move),
+            "nextPolicy" => Ok(ActionType::NextPolicy),
+            "notice" => Ok(ActionType::Notice),
+            "obtainConsent" => Ok(ActionType::ObtainConsent),
+            "play" => Ok(ActionType::Play),
+            "present" => Ok(ActionType::Present),
+            "print" => Ok(ActionType::Print),
+            "read" => Ok(ActionType::Read),
+            "reproduce" => Ok(ActionType::Reproduce),
+            "reproduction" => Ok(ActionType::Reproduction),
+            "reviewPolicy" => Ok(ActionType::ReviewPolicy),
+            "sell" => Ok(ActionType::Sell),
+            "shareAlike" => Ok(ActionType::ShareAlike),
+            "sharing" => Ok(ActionType::Sharing),
+            "sourceCode" => Ok(ActionType::SourceCode),
+            "stream" => Ok(ActionType::Stream),
+            "synchronize" => Ok(ActionType::Synchronize),
+            "textToSpeech" => Ok(ActionType::TextToSpeech),
+            "transform" => Ok(ActionType::Transform),
+            "translate" => Ok(ActionType::Translate),
+            "uninstall" => Ok(ActionType::Uninstall),
+            "watermark" => Ok(ActionType::Watermark),
+            _ => Err(format!("Invalid action type: {}", value))
+        }
+    } 
+}
