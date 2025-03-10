@@ -30,6 +30,8 @@ pub struct PartyCollection {
 pub struct Party {
     pub uid: Option<IriBuf>,
     pub partOf: Vec<IriBuf>,
+    pub assignerOf: Option<IriBuf>,
+    pub assigneeOf: Option<IriBuf>,
     pub metadata: Metadata,
 }
 
@@ -38,7 +40,9 @@ impl Party {
         Party {
             uid: None,
             metadata: Metadata::new(),
-            partOf: Vec::new()
+            partOf: Vec::new(),
+            assignerOf: None,
+            assigneeOf: None,
         }
     }
 }

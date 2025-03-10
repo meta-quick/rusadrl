@@ -29,15 +29,16 @@ pub struct AssetCollection {
     pub metadata: Metadata,
 }
 
-
 //http://www.w3.org/ns/odrl/2/Asset
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Asset {
+    //unique identifier of the asset
     pub uid: Option<IriBuf>,
     //part of the asset collection
     pub partOf: Option<Vec<IriBuf>>,
     //refer to policy definition by IRI of Policy
-    pub hasPolicies: Option<IriBuf>,
+    pub hasPolicy: Option<IriBuf>,
+    //common metadata
     pub metadata: Option<Metadata>,
 }
 

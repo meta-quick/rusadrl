@@ -15,25 +15,15 @@
 #![allow(dead_code)]
 #![warn(non_snake_case)]
 
-use crate::model::rule::Rule;
-use crate::reference::types::RuleType;
+use lombok::{Builder,Setter,GetterMut,Getter};
 
-#[derive(Debug, Default, Clone)]
+use crate::model::duty::Duty;
+use crate::model::rule::Rule;
+
+
+
+#[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Prohibition {
     pub rule: Rule,
-}
-
-impl Prohibition {
-    pub fn new() -> Prohibition {
-        let mut prohibition = Prohibition::default();
-        // prohibition.rule.set_rule_type(RuleType::Prohibition);
-        prohibition
-    }
-    
-    pub fn with_uri(uri: String) -> Prohibition {
-        let mut prohibition = Prohibition::default();
-        // prohibition.rule.set_rule_type(RuleType::Prohibition);
-        // prohibition.rule.set_uri(uri);
-        prohibition
-    }
+    pub remedy: Option<Vec<Duty>>
 }

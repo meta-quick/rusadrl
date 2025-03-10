@@ -20,34 +20,30 @@ use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::metadata::Metadata;
 
-pub struct LeftOperand {
-    pub class: LeftOperandClass,
-    pub value: String,
-}
+use super::{constraint_left_operand::ConstraintLeftOperand, constraint_operator::ConstraintOperator, constraint_right_operand::ConstraintRightOperand};
 
-pub enum RightOperand {
-    Literal(String),
-    Set(Vec<IriBuf>),
-    RightOperandReference(IriBuf),
-}
-
+//Identifier:	http://www.w3.org/ns/odrl/2/Constraint
 #[derive(Debug,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Constraint {
+    //Unique identifier of the constraint
     pub uid: Option<IriBuf>,
 
     //Identifier: http://www.w3.org/ns/odrl/2/unit
     pub unit: String,
+
     //Identifier: http://www.w3.org/ns/odrl/2/status
     pub status: bool,
+
     //Identifier: http://www.w3.org/ns/odrl/2/dataType
     //JSONLD: @type
     pub dataType: String,
-    //Identifier: http://www.w3.org/ns/odrl/2/Operator
-    pub operator: String,
 
-    pub leftOperand: LeftOperand,
-    pub rightOperand: RightOperand,
-    pub metadata: Metadata,
+    //Identifier: http://www.w3.org/ns/odrl/2/Operator
+    pub operator: Option<ConstraintOperator>,
+
+    pub leftOperand: ConstraintLeftOperand,
+    pub rightOperand: ConstraintRightOperand,
+    pub metadata: Option<Metadata>,
 }
 
 impl Default for Constraint {
@@ -68,10 +64,10 @@ impl Constraint {
             unit: String::new(),
             status: false,
             dataType: String::new(),
-            operator: String::new(),
-            leftOperand: String::new(),
-            rightOperand: String::new(),
-            metadata: Metadata::new(),
+            operator: ConstraintOperator::default(),
+            leftOperand: None,
+            rightOperand: None,
+            metadata: None,
         }
     }
 }

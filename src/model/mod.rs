@@ -16,6 +16,7 @@ mod action;
 mod conflict_strategy;
 mod constraint_operator;
 mod constraint_left_operand;
+mod constraint_right_operand;
 mod constraint;
 mod metadata;
 mod asset;

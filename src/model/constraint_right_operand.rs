@@ -13,10 +13,31 @@
 // limitations under the License.
 
 #![allow(dead_code)]
+#![allow(non_snake_case)]
 
-use crate::traits::definions::{Model, Resource};
+use iref::IriBuf;
+use lombok::{Builder, Getter, GetterMut, Setter};
 
-pub struct ResourceModel {
-    pub resource: Box<dyn Resource>,
-    pub model: Box<dyn Model>,
+pub enum RightOperandType {
+    Literal,
+    LiteralSet,
+    Reference
+}
+
+pub struct RightOperandReference {
+    pub reference: IriBuf
+}
+
+#[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
+pub struct ConstraintRightOperand {
+    pub ty: RightOperandType,
+    pub value: Option<String>,
+    pub values: Option<Vec<String>>,
+    pub reference: Option<RightOperandReference>
+}
+
+impl Default for RightOperandType {
+    fn default() -> Self {
+        RightOperandType::Literal
+    }
 }
