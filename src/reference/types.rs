@@ -13,24 +13,5 @@
 // limitations under the License.
 
 #![allow(dead_code)]
+#![allow(non_snake_case)]
 
-#[derive(Debug,Default,PartialEq, Eq, Clone)]
-pub enum PolicyClassType {
-    SET,
-    OFFER,
-    AGREEMENT,
-    #[default]
-    NONE,
-}
-
-impl TryFrom<String> for PolicyClassType {
-    type Error = anyhow::Error;
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
-            "set" => Ok(PolicyClassType::SET),
-            "offer" => Ok(PolicyClassType::OFFER),
-            "aggrement" => Ok(PolicyClassType::AGREEMENT),
-            _ => Ok(PolicyClassType::NONE),
-        }
-    }
-}

@@ -17,13 +17,11 @@
 
 use lombok::{Builder,Setter,GetterMut,Getter};
 
-use crate::model::duty::Duty;
 use crate::model::rule::Rule;
 
 
 
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Permission {
-    pub rule: Rule,
-    pub duty: Option<Vec<Duty>>,
+    pub duty: Rule,
 }

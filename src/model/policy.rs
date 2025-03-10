@@ -24,13 +24,12 @@ use crate::model::constraint::Constraint;
 use crate::model::duty::Duty;
 use crate::model::rule::Rule;
 use crate::model::metadata::Metadata;
-use crate::traits::validate::Validate;
+use crate::traits::traits::Validate;
 
 use crate::model::error::OdrlError;
 use crate::model::party::Party;
 use crate::model::permission::Permission;
 use crate::model::prohibition::Prohibition;
-use crate::reference::types::PolicyClassType;
 
 //Identifier:	http://www.w3.org/ns/odrl/2/Policy
 #[derive(Debug,Default,Builder,Getter,GetterMut,Clone)]
@@ -63,77 +62,25 @@ impl Default for Policy {
 }
 
 impl Validate for Policy {
-    fn validate(&self) -> Result<(), OdrlError> {
+    fn validate(& mut self) -> Result<(), OdrlError> {
         //verify if uid is valid
         if self.uid.is_none() {
             return Err(OdrlError::InvalidIri);
         }
 
-        /* verify policy per class type
-         * 1. NONE/SET is the default one, Set Policy subclass is also the default subclass of Policy;
-         *    Set represents any combination of Rule
-         */
-
-        let class = self.get_class();
-        match class {
-            Some(class) => {
-                match class {
-                    /*
-                     *  {
-                     *      "@context": "http://www.w3.org/ns/odrl.jsonld",
-                     *      "@type": "Set",
-                     *       "uid": "http://example.com/policy:1010",
-                     *       "permission": [{
-                     *           "target": "http://example.com/asset:9898.movie",
-                     *           "action": "use"
-                     *       }]
-                     *   }
-                     */
-                    PolicyClassType::SET => {
-                        self.validate_class_set()
-                    },
-                    /*
-                     *  {
-                     *       "@context": "http://www.w3.org/ns/odrl.jsonld",
-                     *       "@type": "Offer",
-                     *       "uid": "http://example.com/policy:1011",
-                     *       "profile": "http://example.com/odrl:profile:01",
-                     *       "permission": [{
-                     *           "target": "http://example.com/asset:9898.movie",
-                     *           "assigner": "http://example.com/party:org:abc",
-                     *           "action": "play"
-                     *       }]
-                     *   }
-                     */
-                    PolicyClassType::OFFER => {
-                        self.validate_class_offer()
-                    },
-                    /*
-                     *  {
-                     *       "@context": "http://www.w3.org/ns/odrl.jsonld",
-                     *       "@type": "Agreement",
-                     *       "uid": "http://example.com/policy:1012",
-                     *       "profile": "http://example.com/odrl:profile:01",
-                     *       "permission": [{
-                     *           "target": "http://example.com/asset:9898.movie",
-                     *           "assigner": "http://example.com/party:org:abc",
-                     *           "assignee": "http://example.com/party:person:billie",
-                     *           "action": "play"
-                     *       }]
-                     *   }
-                     */
-                    PolicyClassType::AGREEMENT => {
-                        self.validate_class_agreement()
-                    },
-                    PolicyClassType::NONE => {
-                        self.validate_class_set()
-                    },
-                }
-            },
-            None => { //As default, policy is a set policy
-                self.validate_class_set()
-            }
+        let permission = self.get_permission();
+        let prohibition = self.get_prohibition();
+        let obligation = self.get_obligation();
+        if permission.is_none() && prohibition.is_none() && obligation.is_none() {
+            return Err(OdrlError::InvalidRuleDefinition);
         }
+        //check conflict
+        let conflict = self.get_conflict();
+        if conflict.is_none() {
+            self.set_conflict(Some(ConflictStrategy::perm));
+        }
+
+        Ok(())
     }
 }
 
@@ -148,6 +95,117 @@ impl Policy {
 #[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
 pub struct Agreement {
     pub policy: Policy,
+}
+
+impl Validate for Agreement {
+    fn validate(&mut self) -> Result<(), OdrlError> {
+         /*
+          *  {
+          *       "@context": "http://www.w3.org/ns/odrl.jsonld",
+          *       "@type": "Agreement",
+          *       "uid": "http://example.com/policy:1012",
+          *       "profile": "http://example.com/odrl:profile:01",
+          *       "permission": [{
+          *           "target": "http://example.com/asset:9898.movie",
+          *           "assigner": "http://example.com/party:org:abc",
+          *           "assignee": "http://example.com/party:person:billie",
+          *           "action": "play"
+          *       }]
+          *   }
+          */
+          let result = self.policy.validate();
+          if result.is_err() {
+              return result;
+          }
+
+          let common_assignee = self.policy.get_assignee();
+          let common_assigner = self.policy.get_assigner();
+          let common_target = self.policy.get_target();
+
+          let permissions = self.policy.get_permission_mut();
+          let obligations = self.policy.get_obligation_mut();
+          let prohibitions = self.policy.get_prohibition_mut();
+
+          let mut has_permission = false;
+          if permissions.is_some() {
+             //check if permission has assignee, assigner, target
+             for permission in permissions.as_mut().unwrap() {
+                 if permission.get_assignee().is_none() {
+                     if common_assignee.is_none() {
+                         return Err(OdrlError::MissingAgreementAssignee);
+                     }
+                     permission.set_assignee(common_assignee.clone());
+                 }
+
+                 if permission.get_assigner().is_none() {
+                     if common_assigner.is_none() {
+                         return Err(OdrlError::MissingAgreementAssigner);
+                     }
+                     permission.set_assigner(common_assigner.clone());
+                 }
+
+                 if permission.get_target().is_none() {
+                     if common_target.is_none() {
+                         return Err(OdrlError::MissingAgreementTarget);
+                     }
+                     permission.set_target(common_target.clone());
+                 }
+
+                 has_permission = true;
+             }
+         }
+
+         let mut has_obligation = false;
+         if obligations.is_some() {
+             for mut obligation in obligations.as_mut().unwrap() {
+                 if obligation.get_assignee().is_none() {
+                     if common_assignee.is_none() {
+                         return Err(OdrlError::MissingAgreementAssignee);
+                     }
+                     obligation.set_assignee(common_assignee.clone());
+                 }
+                 if obligation.get_assigner().is_none() {
+                     if common_assigner.is_none() {
+                         return Err(OdrlError::MissingAgreementAssigner);
+                     }
+                     obligation.set_assigner(common_assigner.clone());
+                 }
+                 if obligation.get_target().is_none() {
+                     if common_target.is_none() {
+                         return Err(OdrlError::MissingAgreementTarget);
+                     }
+                     obligation.set_target(common_target.clone());
+                 }
+                 has_obligation = true;
+             }
+         }
+
+         let mut has_prohibition = false;
+         if prohibitions.is_some() {
+            for mut prohibition in prohibitions.as_mut().unwrap() {
+                if prohibition.get_assignee().is_none() {
+                    if common_assignee.is_none() {
+                        return Err(OdrlError::MissingAgreementAssignee);
+                    }
+                    prohibition.set_assignee(common_assignee.clone());
+                }
+                if prohibition.get_assigner().is_none() {
+                    if common_assigner.is_none() {
+                        return Err(OdrlError::MissingAgreementAssigner);
+                    }
+                    prohibition.set_assigner(common_assigner.clone());
+                }
+                if prohibition.get_target().is_none() {
+                    if common_target.is_none() {
+                        return Err(OdrlError::MissingAgreementTarget);
+                    }
+                    prohibition.set_target(common_target.clone());
+                }
+                has_prohibition = true;
+            }
+         }
+         Ok(())
+    }
 }
 
 //http://www.w3.org/ns/odrl/2/Offer

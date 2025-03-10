@@ -16,8 +16,10 @@
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
+use anyhow::anyhow;
 use lombok::{Builder, Getter, GetterMut, Setter};
-
+use crate::model::stateworld::StateWorld;
+use crate::traits::traits::OperandValue;
 
 #[derive(Debug,Clone)]
 pub enum ConstraintLeftOperand {
@@ -85,6 +87,129 @@ pub enum ConstraintLeftOperand {
     version,
     //http://www.w3.org/ns/odrl/2/virtualLocation
     virtualLocation
+}
+
+impl OperandValue for ConstraintLeftOperand {
+    fn value(&self,world: &mut StateWorld) -> Result<Self,anyhow::Error> {
+        match self {
+            //please match all the operator in the order of the enum
+            Self::absolutePosition => {
+                world.get_state(Self::absolutePosition.into())
+            },
+            Self::absoluteSpatialPosition => {
+                world.get_state(Self::absoluteSpatialPosition.into())
+            },
+            Self::absoluteTemporalPosition => {
+                world.get_state(Self::absoluteTemporalPosition.into())
+            },
+            Self::absoluteSize => {
+                world.get_state(Self::absoluteSize.into())
+            },
+            Self::count => {
+                world.get_state(Self::count.into())
+            },
+            Self::datetime => {
+                let now = world.now();
+                Some(now.into())
+            },
+            Self::deliveryChannel => {
+                Ok(Self::deliveryChannel.into())
+            },
+            Self::elapsedTime => {
+                let elapsed = world.worldInitialTime;
+                let now = world.now() - elapsed;
+                Some(now.into())
+            },
+            Self::event => {
+                Ok(Self::event.into())
+            },
+            Self::fileFormat => {
+                Ok(Self::fileFormat.into())
+            },
+            Self::industry => {
+                Ok(Self::industry.into())
+            },
+            Self::language => {
+                Ok(Self::language.into())
+            },
+            Self::media => {
+                Ok(Self::media.into())
+            },
+            Self::meteredTime => {
+                Ok(Self::meteredTime.into())
+            },
+            Self::payAmount => {
+                Ok(Self::payAmount.into())
+            },
+            Self::percentage => {
+                Ok(Self::percentage.into())
+            },
+            Self::product => {
+                Ok(Self::product.into())
+            },
+            Self::purpose => {
+                Ok(Self::purpose.into())
+            },
+            Self::recipient => {
+                Ok(Self::recipient.into())
+            },
+            Self::relativePosition => {
+                Ok(Self::relativePosition.into())
+            },
+            Self::relativeSpatialPosition => {
+                Ok(Self::relativeSpatialPosition.into())
+            },
+            Self::relativeTemporalPosition => {
+                Ok(Self::relativeTemporalPosition.into())
+            },
+            Self::relativeSize => {
+                Ok(Self::relativeSize.into())
+            },
+            Self::resolution => {
+                Ok(Self::resolution.into())
+            },
+            Self::spatial => {
+                Ok(Self::spatial.into())
+            },
+            Self::spatialCoordinates => {
+                Ok(Self::spatialCoordinates.into())
+            },
+            Self::systemDevice => {
+                Ok(Self::systemDevice.into())
+            },
+            Self::timeInterval => {
+                let now = world.now();
+                let last = world.last_time();
+                let interval = now - last;
+                Some(interval.into())
+            },
+            Self::unit => {
+                Ok(Self::unit.into())
+            },
+            Self::version => {
+                Ok(Self::version.into())
+            },
+            Self::virtualLocation => {
+                Ok(Self::virtualLocation.into())
+            },
+            Self::delayPeriod => {
+                Ok(Self::delayPeriod.into())
+            },
+            Self::deliveryChannel => {
+                Ok(Self::deliveryChannel.into())
+            },
+            Self::elapsedTime => {
+                Ok(Self::elapsedTime.into())
+            },
+            Self::event => {
+                Ok(Self::event.into())
+            }
+
+            _ => {
+                Err(anyhow!("Not supported yet!"))
+            }
+        }
+    }
 }
 
 impl TryFrom<&str> for ConstraintLeftOperand {

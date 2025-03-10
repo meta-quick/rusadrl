@@ -17,6 +17,8 @@
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
+use crate::model::stateworld::StateWorld;
+use crate::traits::traits::OperandValue;
 
 #[derive(Debug,Default, Clone)]
 pub enum RightOperandType {
@@ -37,6 +39,35 @@ pub struct ConstraintRightOperand {
     pub value: Option<String>,
     pub values: Option<Vec<String>>,
     pub reference: Option<RightOperandReference>
+}
+
+impl OperandValue for ConstraintRightOperand {
+    fn value(&self, world: &mut StateWorld) -> Option<String> {
+        match &self.ty {
+            RightOperandType::Literal => {
+                self.value.clone()
+            },
+            RightOperandType::LiteralSet => {
+                let mut values = vec![];
+                if let Some(values) = &self.values {
+                    for value in values {
+                        values.push(value.clone());
+                    }
+                }
+                Some(values.join(","))
+            },
+            RightOperandType::Reference => {
+                if let Some(reference) = &self.reference {
+                    if let Some(reference) = &reference.reference {
+                        if let Some(value) = world.get_value(reference) {
+                            return Some(value);
+                        }
+                    }
+                }
+                None
+            }
+        }
+    }
 }
 
 impl Default for RightOperandType {

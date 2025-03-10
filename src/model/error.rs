@@ -27,6 +27,9 @@ pub enum OdrlError {
     #[error("Asset must has a valid IRI")]
     InvalidAssetIRI,
 
+    #[error("Rule must has a valid action")]
+    MissingAction,
+
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
