@@ -18,35 +18,23 @@ use lombok::{Builder, Getter, GetterMut, Setter};
 
 use crate::model::metadata::Metadata;
 use crate::model::action::Action;
+use crate::model::asset::Asset;
 use crate::model::constraint::Constraint;
 use crate::model::party::Party;
 use crate::reference::types::RuleType;
 
+//http://www.w3.org/ns/odrl/2/Rule
 #[derive(Debug,Builder,Getter,GetterMut,Setter,Default,Clone)]
 pub struct Rule {
-    pub metadata: Metadata,
-    pub kind: RuleType,
-    pub actions: Vec<Action>,
+    pub uid: Option<IriBuf>,
+    pub action: Action,
+    pub target: Option<Party>,
     pub constraint: Vec<Constraint>,
-    pub consequence: Vec<Rule>,
-    pub remedy: Vec<Rule>,
-    pub target: Option<IriBuf>,
     pub assignee: Option<Party>,
     pub assigner: Option<Party>,
-}
-
-impl Rule {
-    pub fn new() -> Self {
-        Rule {
-            metadata: Metadata::new(),
-            kind: RuleType::Permission,
-            actions: Vec::new(),
-            constraint: Vec::new(),
-            consequence: Vec::new(),
-            remedy: Vec::new(),
-            target: None,
-            assignee: None,
-            assigner: None,
-        }
-    }
+    pub output: Option<Asset>,
+    pub relation: Option<IriBuf>,
+    pub function: String,
+    pub failure: String,
+    pub metadata: Metadata,
 }

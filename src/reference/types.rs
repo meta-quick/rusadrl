@@ -34,20 +34,3 @@ impl TryFrom<String> for PolicyClassType {
         }
     }
 }
-
-
-#[derive(Debug,Default,PartialEq, Eq, Clone)]
-pub enum RuleType {
-    #[default]
-    Permission,
-    Prohibition,
-    Duty,
-}
-
-#[derive(Debug,Default,PartialEq, Eq, Clone)]
-pub enum ConflictTerm {
-    Perm,
-    Prohibit,
-    #[default]
-    Invalid,
-}

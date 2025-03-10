@@ -18,14 +18,17 @@
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 
+#[derive(Debug,Default, Clone)]
 pub enum RightOperandType {
+    #[default]
     Literal,
     LiteralSet,
     Reference
 }
 
+#[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct RightOperandReference {
-    pub reference: IriBuf
+    pub reference: Option<IriBuf>
 }
 
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]

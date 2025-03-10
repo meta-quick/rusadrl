@@ -20,26 +20,7 @@ use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::constraint::Constraint;
 use crate::model::metadata::Metadata;
 
-#[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
-pub struct Action {
-    pub actionType: ActionType,
-    pub includedIn: Option<Vec<Action>>,
-    pub implies: Option<Vec<Action>>,
-    pub refinements: Option<Vec<Constraint>>,
-    pub metadata: Metadata,
-}
-
-impl Action {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn evaluate(&self, action: Action) -> bool {
-        //TODO: Implement this method
-        return false;
-    }
-}
-
+#[derive(Debug,Clone)]
 pub enum ActionType {
     //http://www.w3.org/ns/odrl/2/acceptTracking
     AcceptTracking,
@@ -139,6 +120,32 @@ pub enum ActionType {
     Uninstall,
     //http://www.w3.org/ns/odrl/2/watermark
     Watermark
+}
+
+impl Default for ActionType {
+    fn default() -> Self {
+        ActionType::AcceptTracking
+    }
+}
+
+#[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
+pub struct Action {
+    pub actionType: ActionType,
+    pub includedIn: Option<Vec<Action>>,
+    pub implies: Option<Vec<Action>>,
+    pub refinements: Option<Vec<Constraint>>,
+    pub metadata: Metadata,
+}
+
+impl Action {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn evaluate(&self, action: Action) -> bool {
+        //TODO: Implement this method
+        return false;
+    }
 }
 
 impl TryFrom<&str> for ActionType {

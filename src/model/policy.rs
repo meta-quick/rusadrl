@@ -13,40 +13,44 @@
 // limitations under the License.
 
 #![allow(dead_code)]
+#![allow(non_snake_case)]
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut};
+use crate::model::action::Action;
+use crate::model::asset::Asset;
+use crate::model::conflict_strategy::ConflictStrategy;
+use crate::model::constraint::Constraint;
+use crate::model::duty::Duty;
 use crate::model::rule::Rule;
 use crate::model::metadata::Metadata;
-use crate::reference::types::ConflictTerm;
 use crate::traits::validate::Validate;
 
 use crate::model::error::OdrlError;
+use crate::model::party::Party;
+use crate::model::permission::Permission;
+use crate::model::prohibition::Prohibition;
 use crate::reference::types::PolicyClassType;
 
-#[derive(Debug,Builder,Getter,GetterMut,Clone)]
+//Identifier:	http://www.w3.org/ns/odrl/2/Policy
+#[derive(Debug,Default,Builder,Getter,GetterMut,Clone)]
 pub struct Policy {
-    //Policy class type
-    pub class: Option<PolicyClassType>,
     //Policy must have a unique identifier
     pub uid: Option<IriBuf>,
-    //Policy must have at least one rule, permission, prohibition, or obligation
-    pub rules : Option<Vec<Rule>>,
-    //Policy may have none,one or many profile
     pub profile: Option<Vec<IriBuf>>,
-    //Policy may have none,one or many inheritFrom to identify the parent policy
-    pub inherit_from: Option<Vec<IriBuf>>,
-    //Policy may have none,one or many 
-    pub conflicts: Option<ConflictTerm>,
 
-    //Shared targets to all rules
-    pub targets: Option<Vec<IriBuf>>,
-    //Shared Assigner
-    pub assigner: Option<Vec<IriBuf>>,
-    //Shared Assignee
-    pub assignee: Option<Vec<IriBuf>>,
-    //Shared Action
-    pub actions: Option<Vec<IriBuf>>,
+    pub action: Option<Action>,
+    pub assignee: Option<Vec<Party>>,
+    pub assigner: Option<Vec<Party>>,
+    pub conflict: Option<ConflictStrategy>,
+    pub permission: Option<Vec<Permission>>,
+    pub prohibition: Option<Vec<Prohibition>>,
+    pub obligation: Option<Vec<Duty>>,
+    pub target: Option<Vec<Asset>>,
+    pub inheritFrom : Option<Vec<IriBuf>>,
+    pub constraint: Option<Vec<Constraint>>,
+    pub relation: Option<Vec<IriBuf>>,
+    pub function: Option<Vec<IriBuf>>,
 
     //Meta
     pub metadata: Option<Metadata>,
@@ -54,19 +58,7 @@ pub struct Policy {
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { 
-            class: None,
-            uid: Default::default(), 
-            rules: Default::default(), 
-            profile: Default::default(), 
-            inherit_from: Default::default(),
-            conflicts: Default::default(),
-            targets: Default::default(),
-            assigner: Default::default(),
-            assignee: Default::default(),
-            actions: Default::default(),
-            metadata: Default::default()
-        }
+        Self::default()
     }
 }
 
@@ -147,224 +139,53 @@ impl Validate for Policy {
 
 impl Policy {
     pub fn new() -> Self {
-        Policy {
-            class:None,
-            uid: None,
-            rules: None,
-            profile: None,
-            inherit_from: None,
-            conflicts: Some(ConflictTerm::Invalid),
-            targets: Default::default(),
-            assigner: Default::default(),
-            assignee: Default::default(),
-            actions: Default::default(),
-            metadata: Default::default()
-        }
+       Self::default()
     }
+}
 
-    pub fn with_class(class: PolicyClassType, uid: IriBuf) -> Self {
-        let mut builder = Policy::builder();
-        builder.uid(Some(uid));
-        builder.class(Some(class));
-        builder.build()
-    }
 
-    pub fn validate_class_set(&self) -> Result<(), OdrlError> {
-        //must have at least one rule
-        let rules = self.get_rules();
-        match rules {
-            Some(rlist) =>{
-            if  rlist.len() == 0 {
-                    return Err(OdrlError::NoneRuleDefinition);
-            }
-            },
-            None => {
-                return Err(OdrlError::InvalidRuleDefinition);
-            }
-        }
-        Ok(())
-    }
+//http://www.w3.org/ns/odrl/2/Agreement
+#[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
+pub struct Agreement {
+    pub policy: Policy,
+}
 
-    pub fn validate_class_offer(&self) -> Result<(), OdrlError> {
-        let mut target_found = false;
-        let mut assigner_found = false;
-        //must have at least one rule
-        let rules = self.get_rules();
-        match rules {
-            Some(rlist) =>{
-                if  rlist.len() == 0 {
-                    return Err(OdrlError::NoneRuleDefinition);
-                }
+//http://www.w3.org/ns/odrl/2/Offer
+#[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
+pub struct Offer {
+    pub policy: Policy,
+}
 
-                for rule in rlist {
-                    if rule.get_target().is_some() {
-                        target_found = true;
-                    }
+//http://www.w3.org/ns/odrl/2/Set
+#[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
+pub struct Set {
+    pub policy: Policy,
+}
 
-                    if rule.get_assigner().is_some() {
-                        assigner_found = true;
-                    }
+//http://www.w3.org/ns/odrl/2/Privacy
+#[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
+pub struct Privacy {
+    pub policy: Policy,
+}
 
-                    if target_found && assigner_found {
-                        break;
-                    }
-                }
-            },
-            None => {
-                return Err(OdrlError::InvalidRuleDefinition);
-            }
-        }
+//http://www.w3.org/ns/odrl/2/Request
+#[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
+pub struct Request {
+    pub policy: Policy,
+}
 
-        //must have at least one target
-        if let Some(targets) = self.get_targets() {
-            if targets.len() >= 1 {
-                target_found = true;
-            }
-        }
+//http://www.w3.org/ns/odrl/2/Assertion
+#[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
+pub struct Assert {
+    pub policy: Policy,
+}
 
-        if !target_found {
-            return Err(OdrlError::MissingOfferTarget);
-        }
-
-        //must have at least assigner
-        if let Some(assigner) = self.get_assigner() {
-            if assigner.len() > 0 {
-                assigner_found = true;
-            }
-        }
-
-        if !assigner_found {
-            return Err(OdrlError::MissingOfferAssigner);
-        }
-
-        Ok(())
-    }
-
-    pub fn validate_class_agreement(&self) -> Result<(), OdrlError> {
-        let mut target_found = false;
-        let mut assigner_found = false;
-        let mut assignee_found = false;
-
-        //must have at least one rule
-        let rules = self.get_rules();
-        match rules {
-            Some(rlist) =>{
-                if  rlist.len() == 0 {
-                    return Err(OdrlError::NoneRuleDefinition);
-                }
-
-                for rule in rlist {
-                    if rule.get_target().is_some() {
-                        target_found = true;
-                    }
-
-                    if rule.get_assigner().is_some() {
-                        assigner_found = true;
-                    }
-
-                    if rule.get_assignee().is_some() {
-                        assignee_found = true;
-                    }
-
-                    if target_found && assigner_found && assignee_found {
-                        break;
-                    }
-                }
-            },
-            None => {
-                return Err(OdrlError::InvalidRuleDefinition);
-            }
-        }
-
-        //must have at least one target
-        if let Some(targets) = self.get_targets() {
-            if targets.len() >= 1 {
-                target_found = true;
-            }
-        }
-
-        if !target_found {
-            return Err(OdrlError::MissingAgreementTarget);
-        }
-
-        //must have at least assigner
-        if let Some(assigner) = self.get_assigner() {
-            if assigner.len() > 0 {
-                assigner_found = true;
-            }
-        }
-
-        if !assigner_found {
-            return Err(OdrlError::MissingAgreementAssigner);
-        }
-
-        //must have at least assignee
-        if let Some(assignee) = self.get_assignee()  {
-            if assignee.len() > 0 {
-                assignee_found = true;
-            }
-        }
-
-        if !assignee_found {
-            return Err(OdrlError::MissingAgreementAssignee);
-        }
-
-        Ok(())
-    }
+//http://www.w3.org/ns/odrl/2/Ticket
+#[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
+pub struct Ticket {
+    pub policy: Policy,
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::model::rule::Rule;
-    use crate::reference::types::PolicyClassType;
-
-    use super::*;
-
-    #[test]
-    fn test_policy_new() {
-        let mut builder = Policy::builder();
-        builder.uid(Some(IriBuf::new("http://example.com/policy".to_owned()).unwrap()));
-
-
-        let profiles = vec![IriBuf::new("http://data.com/profile".to_owned()).unwrap()];
-        builder.profile(Some(profiles));
-
-        let rules = vec![Rule::new()];
-        builder.rules(Some(rules));
-
-        let policy = builder.build();
-        let result = policy.validate();
-        match result {
-            Ok(()) => println!("Policy is valid"),
-            Err(e) => println!("Error: {:?}", e.to_string()),
-        }
-    }
-
-    #[test]
-    fn test_policy_builder(){
-        let mut builder = Policy::builder();
-        builder.uid(Some(IriBuf::new("http://example.com/policy".to_owned()).unwrap()));
-
-        let profiles = vec![IriBuf::new("http://data.com/profile".to_owned()).unwrap()];
-        builder.profile(Some(profiles));
-        let policy = builder.build();
-                                
-        assert_eq!(policy.uid.unwrap(),"http://example.com/policy".to_owned());       
-        let profiles = vec![IriBuf::new("http://data.com/profile".to_owned()).unwrap()];
-        assert_eq!(policy.profile.unwrap(),profiles);               
-    }
-
-    #[test]
-    fn test_policy_new_with_class() {
-        let policy = Policy::with_class(PolicyClassType::SET, IriBuf::new("http://example.com/policy".to_owned()).unwrap());
-        
-        let class = policy.get_class().as_ref().unwrap();
-        assert_eq!(*class, PolicyClassType::SET);
-
-        let result = policy.validate();
-        match result {
-            Ok(()) => println!("Policy is valid"),
-            Err(e) => println!("Error: {:?}", e.to_string()),
-        }
-    }
 }

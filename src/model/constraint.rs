@@ -41,8 +41,8 @@ pub struct Constraint {
     //Identifier: http://www.w3.org/ns/odrl/2/Operator
     pub operator: Option<ConstraintOperator>,
 
-    pub leftOperand: ConstraintLeftOperand,
-    pub rightOperand: ConstraintRightOperand,
+    pub leftOperand: Option<ConstraintLeftOperand>,
+    pub rightOperand: Option<ConstraintRightOperand>,
     pub metadata: Option<Metadata>,
 }
 
@@ -64,7 +64,7 @@ impl Constraint {
             unit: String::new(),
             status: false,
             dataType: String::new(),
-            operator: ConstraintOperator::default(),
+            operator: None,
             leftOperand: None,
             rightOperand: None,
             metadata: None,

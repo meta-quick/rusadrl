@@ -17,6 +17,7 @@
 #![allow(non_camel_case_types)]
 
 //http://www.w3.org/ns/odrl/2/ConflictTerm
+#[derive(Debug,Clone)]
 pub enum ConflictStrategy {
     //http://www.w3.org/ns/odrl/2/prohibit
     prohibit,
