@@ -18,6 +18,7 @@
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
+use crate::model::constraint_left_operand::ConstraintLeftOperand::meteredTime;
 use crate::model::constraint_operator::ConstraintLogicOperator;
 use crate::model::data_type::DataType;
 use crate::model::metadata::Metadata;
@@ -77,7 +78,7 @@ impl Constraint {
 }
 
 impl LogicEval for Constraint {
-    fn eval(&mut self, mut world: &mut StateWorld) -> Result<bool, anyhow::Error> {
+    fn eval(&self, mut world: &mut StateWorld) -> Result<bool, anyhow::Error> {
         if let None = self.operator {
             return Err(anyhow::Error::msg("No operator defined"));
         }
@@ -107,19 +108,38 @@ impl LogicEval for Constraint {
 }
 
 
-#[derive(Debug,Builder,Default,Getter,GetterMut,Setter, Clone)]
+#[derive(Debug,Builder, Clone)]
 pub struct LogicConstraint {
     pub uid: Option<IriBuf>,
     pub operator: Option<ConstraintLogicOperator>,
     pub operand: Option<Vec<Constraint>>
 }
 
-impl LogicConstraint {
+impl Default for LogicConstraint {
+    fn default() -> Self {
+        LogicConstraint::new("http://www.w3.org/ns/odrl/2/LogicalConstraint")
+    }
+}
 
+impl LogicConstraint {
+    pub fn new(iri: &str) -> Self {
+        let uid = String::from(iri);
+        LogicConstraint {
+            uid: Some(IriBuf::new(uid).unwrap()),
+            operator: None,
+            operand: None,
+        }
+    }
+    pub fn get_operator(&self) -> Option<ConstraintLogicOperator> {
+        self.operator.clone()
+    }
+    pub fn get_operands(&self) -> Option<Vec<Constraint>> {
+        self.operand.clone()
+    }
 }
 
 impl LogicEval for LogicConstraint {
-    fn eval(&mut self, mut world: &mut StateWorld) -> Result<bool, anyhow::Error> {
+    fn eval(&self, mut world: &mut StateWorld) -> Result<bool, anyhow::Error> {
         if let None = self.uid {
             return Err(anyhow::Error::msg("No uid defined"));
         }
@@ -128,26 +148,57 @@ impl LogicEval for LogicConstraint {
             return Err(anyhow::Error::msg("No operator defined"));
         }
 
-        let operator = self.operator.as_ref().unwrap();
+        let operator = self.get_operator().unwrap();
         match operator {
             ConstraintLogicOperator::or => {
-                let operands = self.operand.as_ref().unwrap();
+                let operands = self.get_operands().unwrap();
                 for operand in operands {
-                    let result = operand.eval(&mut world).unwrap();
-                    if result {
-                        return Ok(true);
+                    let ret = operand.eval(&mut world);
+                    match &ret {
+                        Ok(ret) => {
+                            if *ret {
+                                return Ok(true);
+                            }
+                        }
+                        Err(e) => {
+                        }
                     }
                 }
                 return Ok(false);
             }
             ConstraintLogicOperator::xone => {
-
+                let operands = &self.get_operands().unwrap();
+                let mut count = 0;
+                for operand in operands {
+                    let ret = operand.eval(&mut world);
+                    match &ret {
+                        Ok(ret) => {
+                            if *ret {
+                                count += 1;
+                            }
+                        }
+                        Err(e) => {
+                        }
+                    }
+                }
+                return Ok(count == 1);
             }
+            ConstraintLogicOperator::andSequence |
             ConstraintLogicOperator::and => {
-
-            }
-            ConstraintLogicOperator::andSequence => {
-
+                let operands = &self.get_operands().unwrap();
+                for operand in operands {
+                    let ret = operand.eval(&mut world);
+                    match &ret {
+                        Ok(ret) => {
+                            if !ret {
+                                return Ok(false);
+                            }
+                        }
+                        Err(e) => {
+                        }
+                    }
+                }
+                return Ok(true);
             }
         }
     }
@@ -175,6 +226,48 @@ mod tests {
         constraint.set_rightOperand(Some(right));
 
         let ret =  constraint.eval(&mut world).unwrap();
+        assert!(ret);
+    }
+
+    #[test]
+    fn test_logic_constraint() {
+        let mut world = StateWorld::default();
+        world.add_state("version", "1.0");
+
+        let mut constraint1 = Constraint::new("http://www.w3.org/ns/odrl/2/Constraint");
+        let op: ConstraintOperator = "eq".try_into().unwrap();
+        let left: ConstraintLeftOperand = "version".try_into().unwrap();
+        let right: ConstraintRightOperand = ConstraintRightOperand::builder()
+                                           .value(Some("1.0".to_string()))
+                                           .ty(RightOperandType::Literal)
+                                           .build();
+        constraint1.set_operator(Some(op));
+        constraint1.set_dataType("string".to_string());
+        constraint1.set_leftOperand(Some(left));
+        constraint1.set_rightOperand(Some(right));
+
+        let mut constraint2 = Constraint::new("http://www.w3.org/ns/odrl/2/Constraint");
+        let op: ConstraintOperator = "eq".try_into().unwrap();
+        let left: ConstraintLeftOperand = "version".try_into().unwrap();
+        let right: ConstraintRightOperand = ConstraintRightOperand::builder()
+            .value(Some("1.0".to_string()))
+            .ty(RightOperandType::Literal)
+            .build();
+        constraint2.set_operator(Some(op));
+        constraint2.set_dataType("string".to_string());
+        constraint2.set_leftOperand(Some(left));
+        constraint2.set_rightOperand(Some(right));
+
+
+        let mut logic_constraint = LogicConstraint::builder()
+                        .uid(Some(
+                            IriBuf::new("http://www.w3.org/ns/odrl/2/LogicalConstraint".to_string()).unwrap(),
+                         ))
+                        .operator(Some(ConstraintLogicOperator::and))
+                        .operand(Some(vec![constraint1, constraint2]))
+                        .build();
+
+        let ret =  logic_constraint.eval(&mut world).unwrap();
         assert!(ret);
     }
 }

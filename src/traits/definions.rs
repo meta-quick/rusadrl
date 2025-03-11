@@ -18,5 +18,5 @@ use anyhow::Error;
 use crate::model::stateworld::StateWorld;
 
 pub trait LogicEval {
-    fn eval(&mut self, world: &mut StateWorld) -> Result<bool, anyhow::Error>;
+    fn eval(&self, world: &mut StateWorld) -> Result<bool, anyhow::Error>;
 }
