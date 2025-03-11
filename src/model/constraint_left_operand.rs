@@ -16,10 +16,11 @@
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
+use std::str::FromStr;
 use anyhow::anyhow;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::stateworld::StateWorld;
-use crate::traits::traits::OperandValue;
+use crate::reference::types::{OperandValue, OperandValueType};
 
 #[derive(Debug,Clone)]
 pub enum ConstraintLeftOperand {
@@ -89,122 +90,72 @@ pub enum ConstraintLeftOperand {
     virtualLocation
 }
 
-impl OperandValue for ConstraintLeftOperand {
-    fn value(&self,world: &mut StateWorld) -> Result<Self,anyhow::Error> {
+impl  ConstraintLeftOperand {
+    pub fn value(&self, world: &mut StateWorld) -> Result<OperandValue,anyhow::Error> {
         match self {
             //please match all the operator in the order of the enum
-            Self::absolutePosition => {
-                world.get_state(Self::absolutePosition.into())
-            },
-            Self::absoluteSpatialPosition => {
-                world.get_state(Self::absoluteSpatialPosition.into())
-            },
-            Self::absoluteTemporalPosition => {
-                world.get_state(Self::absoluteTemporalPosition.into())
-            },
-            Self::absoluteSize => {
-                world.get_state(Self::absoluteSize.into())
-            },
-            Self::count => {
-                world.get_state(Self::count.into())
-            },
-            Self::datetime => {
-                let now = world.now();
-                Some(now.into())
-            },
-            Self::deliveryChannel => {
-                Ok(Self::deliveryChannel.into())
-            },
-            Self::elapsedTime => {
-                let elapsed = world.worldInitialTime;
-                let now = world.now() - elapsed;
-                Some(now.into())
-            },
-            Self::event => {
-                Ok(Self::event.into())
-            },
-            Self::fileFormat => {
-                Ok(Self::fileFormat.into())
-            },
-            Self::industry => {
-                Ok(Self::industry.into())
-            },
-            Self::language => {
-                Ok(Self::language.into())
-            },
-            Self::media => {
-                Ok(Self::media.into())
-            },
-            Self::meteredTime => {
-                Ok(Self::meteredTime.into())
-            },
-            Self::payAmount => {
-                Ok(Self::payAmount.into())
-            },
-            Self::percentage => {
-                Ok(Self::percentage.into())
-            },
-            Self::product => {
-                Ok(Self::product.into())
-            },
-            Self::purpose => {
-                Ok(Self::purpose.into())
-            },
-            Self::recipient => {
-                Ok(Self::recipient.into())
-            },
-            Self::relativePosition => {
-                Ok(Self::relativePosition.into())
-            },
-            Self::relativeSpatialPosition => {
-                Ok(Self::relativeSpatialPosition.into())
-            },
-            Self::relativeTemporalPosition => {
-                Ok(Self::relativeTemporalPosition.into())
-            },
-            Self::relativeSize => {
-                Ok(Self::relativeSize.into())
-            },
-            Self::resolution => {
-                Ok(Self::resolution.into())
-            },
-            Self::spatial => {
-                Ok(Self::spatial.into())
-            },
-            Self::spatialCoordinates => {
-                Ok(Self::spatialCoordinates.into())
-            },
-            Self::systemDevice => {
-                Ok(Self::systemDevice.into())
-            },
-            Self::timeInterval => {
-                let now = world.now();
-                let last = world.last_time();
-                let interval = now - last;
-                Some(interval.into())
-            },
-            Self::unit => {
-                Ok(Self::unit.into())
-            },
-            Self::version => {
-                Ok(Self::version.into())
-            },
-            Self::virtualLocation => {
-                Ok(Self::virtualLocation.into())
-            },
-            Self::delayPeriod => {
-                Ok(Self::delayPeriod.into())
-            },
-            Self::deliveryChannel => {
-                Ok(Self::deliveryChannel.into())
-            },
-            Self::elapsedTime => {
-                Ok(Self::elapsedTime.into())
-            },
-            Self::event => {
-                Ok(Self::event.into())
-            }
+            ConstraintLeftOperand::absolutePosition
+            | ConstraintLeftOperand::absoluteSpatialPosition
+            | ConstraintLeftOperand::absoluteTemporalPosition
+            | ConstraintLeftOperand::absoluteSize
+            | ConstraintLeftOperand::count
+            | ConstraintLeftOperand::deliveryChannel
+            | ConstraintLeftOperand::event
+            | ConstraintLeftOperand::fileFormat
+            | ConstraintLeftOperand::industry
+            | ConstraintLeftOperand::language
+            | ConstraintLeftOperand::media
+            | ConstraintLeftOperand::payAmount
+            | ConstraintLeftOperand::percentage
+            | ConstraintLeftOperand::product
+            | ConstraintLeftOperand::purpose
+            | ConstraintLeftOperand::recipient
+            | ConstraintLeftOperand::relativePosition
+            | ConstraintLeftOperand::relativeSpatialPosition
+            | ConstraintLeftOperand::relativeTemporalPosition
+            | ConstraintLeftOperand::relativeSize
+            | ConstraintLeftOperand::resolution
+            | ConstraintLeftOperand::spatial
+            | ConstraintLeftOperand::spatialCoordinates
+            | ConstraintLeftOperand::systemDevice
+            | ConstraintLeftOperand::unit
+            | ConstraintLeftOperand::version
+            | ConstraintLeftOperand::virtualLocation
+            | ConstraintLeftOperand::timeInterval
+            | ConstraintLeftOperand::delayPeriod
+            | ConstraintLeftOperand::meteredTime
+            => {
+                let state = String::try_from(self.clone()).unwrap();
+                let state = world.get_state(state.as_str());
 
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::string);
+                match state {
+                    Some(state) => {
+                        val.set_sval(Some(state.to_owned()));
+                        return Ok(val);
+                    },
+                    None => {
+                        return Err(anyhow!("constraint left operand: {} not found",state.unwrap()));
+                    }
+                }
+            }
+            ConstraintLeftOperand::datetime => {
+                let now = world.now();
+
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::string);
+                val.set_sval(Some(now.to_string()));
+                Ok(val)
+            },
+            ConstraintLeftOperand::elapsedTime => {
+                let eclipsed = world.eclipse_datetime();
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::string);
+                val.set_sval(Some(eclipsed.to_string()));
+
+                Ok(val)
+            }
             _ => {
                 Err(anyhow!("Not supported yet!"))
             }
@@ -253,31 +204,64 @@ impl TryFrom<&str> for ConstraintLeftOperand {
             _ => Err(anyhow::anyhow!("Invalid operator: {}", value))
         }
     }
-}   
-
-
-pub enum ConstraintLogicOperator {
-    //http://www.w3.org/ns/odrl/2/or
-    or,
-    //http://www.w3.org/ns/odrl/2/xone
-    xone,
-    //http://www.w3.org/ns/odrl/2/and
-    and,
-    //http://www.w3.org/ns/odrl/2/andSequence
-    andSequence
 }
 
-impl TryFrom<&str> for ConstraintLogicOperator {
+impl TryFrom<ConstraintLeftOperand> for String {
     type Error = anyhow::Error;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let value = value.to_lowercase();
-        match value.as_str() {
-            //please match all the operator in the order of the enum
-            "or" => Ok(ConstraintLogicOperator::or),
-            "xone" => Ok(ConstraintLogicOperator::xone),
-            "and" => Ok(ConstraintLogicOperator::and),
-            "andsequence" => Ok(ConstraintLogicOperator::andSequence),
-            _ => Err(anyhow::anyhow!("Invalid operator: {}", value)),
+
+    fn try_from(value: ConstraintLeftOperand) -> Result<Self, Self::Error> {
+        match value {
+            ConstraintLeftOperand::absolutePosition => Ok("absolutePosition".to_string()),
+            ConstraintLeftOperand::absoluteSpatialPosition => Ok("absoluteSpatialPosition".to_string()),
+            ConstraintLeftOperand::absoluteTemporalPosition => Ok("absoluteTemporalPosition".to_string()),
+            ConstraintLeftOperand::absoluteSize => Ok("absoluteSize".to_string()),
+            ConstraintLeftOperand::count => Ok("count".to_string()),
+            ConstraintLeftOperand::datetime => Ok("datetime".to_string()),
+            ConstraintLeftOperand::delayPeriod => Ok("delayPeriod".to_string()),
+            ConstraintLeftOperand::deliveryChannel => Ok("deliveryChannel".to_string()),
+            ConstraintLeftOperand::elapsedTime => Ok("elapsedTime".to_string()),
+            ConstraintLeftOperand::event => Ok("event".to_string()),
+            ConstraintLeftOperand::fileFormat => Ok("fileFormat".to_string()),
+            ConstraintLeftOperand::industry => Ok("industry".to_string()),
+            ConstraintLeftOperand::language => Ok("language".to_string()),
+            ConstraintLeftOperand::media => Ok("media".to_string()),
+            ConstraintLeftOperand::meteredTime => Ok("meteredTime".to_string()),
+            ConstraintLeftOperand::payAmount => Ok("payAmount".to_string()),
+            ConstraintLeftOperand::percentage => Ok("percentage".to_string()),
+            ConstraintLeftOperand::product => Ok("product".to_string()),
+            ConstraintLeftOperand::purpose => Ok("purpose".to_string()),
+            ConstraintLeftOperand::recipient => Ok("recipient".to_string()),
+            ConstraintLeftOperand::relativePosition => Ok("relativePosition".to_string()),
+            ConstraintLeftOperand::relativeSpatialPosition => Ok("relativeSpatialPosition".to_string()),
+            ConstraintLeftOperand::relativeTemporalPosition => Ok("relativeTemporalPosition".to_string()),
+            ConstraintLeftOperand::relativeSize => Ok("relativeSize".to_string()),
+            ConstraintLeftOperand::resolution => Ok("resolution".to_string()),
+            ConstraintLeftOperand::spatial => Ok("spatial".to_string()),
+            ConstraintLeftOperand::spatialCoordinates => Ok("spatialCoordinates".to_string()),
+            ConstraintLeftOperand::systemDevice => Ok("systemDevice".to_string()),
+            ConstraintLeftOperand::timeInterval => Ok("timeInterval".to_string()),
+            ConstraintLeftOperand::unit => Ok("unit".to_string()),
+            ConstraintLeftOperand::version => Ok("version".to_string()),
+            ConstraintLeftOperand::virtualLocation => Ok("virtualLocation".to_string()),
         }
+    }
+}
+
+impl FromStr for ConstraintLeftOperand {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_constraint_left_operand() {
+        let ver: ConstraintLeftOperand = "version".parse().unwrap();
+        println!("{:?}", ver);
+        let s: String= ver.try_into().unwrap();
+        println!("{:?}", s);
     }
 }

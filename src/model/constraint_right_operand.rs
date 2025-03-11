@@ -18,7 +18,7 @@
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::stateworld::StateWorld;
-use crate::traits::traits::OperandValue;
+use crate::reference::types::{OperandValue, OperandValueType};
 
 #[derive(Debug,Default, Clone)]
 pub enum RightOperandType {
@@ -41,37 +41,64 @@ pub struct ConstraintRightOperand {
     pub reference: Option<RightOperandReference>
 }
 
-impl OperandValue for ConstraintRightOperand {
-    fn value(&self, world: &mut StateWorld) -> Option<String> {
+impl  ConstraintRightOperand {
+   pub fn value(&self, world: &mut StateWorld) -> Result<OperandValue,anyhow::Error> {
         match &self.ty {
             RightOperandType::Literal => {
-                self.value.clone()
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::string);
+                val.set_sval(self.value.clone());
+                Ok(val)
             },
             RightOperandType::LiteralSet => {
-                let mut values = vec![];
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::set);
+
+                let mut set:Vec<String> = vec![];
                 if let Some(values) = &self.values {
                     for value in values {
-                        values.push(value.clone());
+                        set.push(value.clone());
                     }
                 }
-                Some(values.join(","))
+                val.set_sets(Some(set));
+                Ok(val)
             },
             RightOperandType::Reference => {
                 if let Some(reference) = &self.reference {
                     if let Some(reference) = &reference.reference {
-                        if let Some(value) = world.get_value(reference) {
-                            return Some(value);
+                        let iri = reference.as_str();
+                        let referred = world.get_referred_operand(iri);
+
+                        if let Some(referred) = referred {
+                            match referred.ty {
+                                RightOperandType::Literal => {
+                                    let mut val = OperandValue::default();
+                                    val.set_ty(OperandValueType::string);
+                                    val.set_sval(self.value.clone());
+                                    return Ok(val);
+                                },
+                                RightOperandType::LiteralSet => {
+                                    let mut val = OperandValue::default();
+                                    val.set_ty(OperandValueType::set);
+
+                                    let mut set:Vec<String> = vec![];
+                                    if let Some(values) = &referred.values {
+                                        for value in values {
+                                            set.push(value.clone());
+                                        }
+                                    }
+                                    val.set_sets(Some(set));
+                                    return Ok(val);
+                                }
+                                _ => {
+                                    return Err(anyhow::anyhow!("Unsupported operand type"));
+                                }
+                            }
                         }
                     }
                 }
-                None
+                Err(anyhow::anyhow!("Unsupported operand type"))
             }
         }
-    }
-}
-
-impl Default for RightOperandType {
-    fn default() -> Self {
-        RightOperandType::Literal
     }
 }

@@ -14,4 +14,30 @@
 
 #![allow(dead_code)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
+use lombok::{Builder, Getter, GetterMut, Setter};
+
+#[derive(Debug,Default, Clone)]
+pub enum OperandValueType {
+    #[default]
+    string,
+    set,
+}
+
+#[derive(Debug,Default,Builder,Setter, Clone)]
+pub struct OperandValue {
+    pub ty: OperandValueType,
+    pub sets: Option<Vec<String>>,
+    pub sval: Option<String>
+}
+
+impl OperandValue {
+    pub fn get_sval(&self) -> Option<String> {
+       self.sval.clone()
+    }
+
+    pub fn get_set(&self) -> Option<Vec<String>> {
+        self.sets.clone()
+    }
+}

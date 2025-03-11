@@ -18,8 +18,10 @@
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
+use crate::model::data_type::DataType;
 use crate::model::metadata::Metadata;
-
+use crate::model::stateworld::StateWorld;
+use crate::traits::definions::LogicEval;
 use super::{constraint_left_operand::ConstraintLeftOperand, constraint_operator::ConstraintOperator, constraint_right_operand::ConstraintRightOperand};
 
 //Identifier:	http://www.w3.org/ns/odrl/2/Constraint
@@ -69,6 +71,62 @@ impl Constraint {
             rightOperand: None,
             metadata: None,
         }
+    }
+}
+
+impl LogicEval for Constraint {
+    fn eval(&mut self, mut world: &mut StateWorld) -> Result<bool, anyhow::Error> {
+        if let None = self.operator {
+            return Err(anyhow::Error::msg("No operator defined"));
+        }
+
+        if let None = self.leftOperand {
+            return Err(anyhow::Error::msg("No left operand defined"));
+        }
+
+        let operator = self.operator.as_ref().unwrap();
+        let left = self.leftOperand.as_ref().unwrap();
+        let right = self.rightOperand.as_ref().unwrap();
+
+        let left_value = left.value(&mut world).unwrap();
+        let right_value = right.value(&mut world).unwrap();
+
+        let dty = DataType::try_from(self.dataType.clone());
+        match dty {
+            Ok(dty) => {
+                let result = operator.eval(dty,&left_value, &right_value);
+                Ok(result)
+            }
+            Err(e) => {
+                Err(e)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::model::constraint_right_operand::RightOperandType;
+    use super::*;
+    #[test]
+    fn test_constraint() {
+        let mut world = StateWorld::default();
+        world.add_state("version", "1.0");
+
+        let mut constraint = Constraint::new("http://www.w3.org/ns/odrl/2/Constraint");
+        let op: ConstraintOperator = "eq".try_into().unwrap();
+        let left: ConstraintLeftOperand = "version".try_into().unwrap();
+        let right: ConstraintRightOperand = ConstraintRightOperand::builder()
+                                            .value(Some("1.0".to_string()))
+                                            .ty(RightOperandType::Literal)
+                                            .build();
+        constraint.set_operator(Some(op));
+        constraint.set_dataType("string".to_string());
+        constraint.set_leftOperand(Some(left));
+        constraint.set_rightOperand(Some(right));
+
+        let ret =  constraint.eval(&mut world).unwrap();
+        assert!(ret);
     }
 }
 

@@ -17,7 +17,9 @@
 #![allow(non_camel_case_types)]
 
 use lombok::{Builder, Getter, GetterMut, Setter};
-
+use crate::model::constraint_left_operand::ConstraintLeftOperand;
+use crate::model::data_type::DataType;
+use crate::reference::types::OperandValue;
 
 #[derive(Debug,Clone)]
 pub enum ConstraintOperator {
@@ -68,8 +70,390 @@ impl TryFrom<&str> for ConstraintOperator {
             _ => Err(anyhow::anyhow!("Invalid operator: {}", value)),
         }
     }
-}   
+}
 
+impl ConstraintOperator {
+    pub fn eval(&self,dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match self {
+            ConstraintOperator::eq => {
+               return self.eq(dty,left,right);
+            },
+            ConstraintOperator::gt => {
+               return self.gt(dty,left,right);
+            },
+            ConstraintOperator::gteq => {
+                return  self.gteq(dty,left,right);
+            },
+            ConstraintOperator::lt => {
+                return self.lt(dty,left,right);
+            },
+            ConstraintOperator::lteq => {
+                return self.lteq(dty,left,right);
+            },
+            ConstraintOperator::neq => {
+                return self.neq(dty,left,right);
+            },
+            ConstraintOperator::isA => {
+                return self.isA(dty,left,right);
+            },
+            ConstraintOperator::hasPart => {
+                return self.hasPart(dty,left,right);
+            },
+            ConstraintOperator::isPartOf => {
+                return self.isPartOf(dty,left,right);
+            },
+            ConstraintOperator::isAllOf => {
+                return self.isAllOf(dty,left,right);
+            },
+            ConstraintOperator::isAnyOf => {
+                return self.isAnyOf(dty,left,right);
+            },
+            ConstraintOperator::isNoneOf => {
+                return self.isNoneOf(dty,left,right);
+            },
+            _ => {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn gt(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+           DataType::Integer => {
+               let left = left.get_sval().unwrap();
+               let right = right.get_sval().unwrap();
+               let left = left.parse::<i64>().unwrap();
+               let right = right.parse::<i64>().unwrap();
+               left == right
+           },
+           DataType::Float => {
+               let left = left.get_sval().unwrap();
+               let right = right.get_sval().unwrap();
+               let left = left.parse::<f64>().unwrap();
+               let right = right.parse::<f64>().unwrap();
+               if (left - right).abs() < std::f64::EPSILON {
+                   return true;
+               }
+               false
+           },
+           DataType::Date => {
+               let left = left.get_sval().unwrap();
+               let right = right.get_sval().unwrap();
+               let left = left.parse::<i64>().unwrap();
+               let right = right.parse::<i64>().unwrap();
+               left == right
+           },
+           DataType::Time => {
+               let left = left.get_sval().unwrap();
+               let right = right.get_sval().unwrap();
+               let left = left.parse::<i64>().unwrap();
+               let right = right.parse::<i64>().unwrap();
+               left == right
+           }
+           _ => false
+        }
+    }
+
+    fn eq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                left == right
+            },
+            DataType::Integer => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left == right
+            },
+            DataType::Float => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<f64>().unwrap();
+                let right = right.parse::<f64>().unwrap();
+                if (left - right).abs() < f64::EPSILON {
+                    return true;
+                }
+                false
+            },
+            DataType::Boolean => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<bool>().unwrap();
+                let right = right.parse::<bool>().unwrap();
+                left == right
+            },
+            DataType::Date |
+            DataType::DateTime |
+            DataType::Time => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left == right
+            }
+        }
+    }
+
+    fn gteq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::Integer => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left >= right
+            },
+            DataType::Float => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<f64>().unwrap();
+                let right = right.parse::<f64>().unwrap();
+
+                left - right >= f64::EPSILON
+            },
+            DataType::Date => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left >= right
+            },
+            DataType::Time => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left >= right
+            }
+            _ => {
+                false
+            }
+        }
+    }
+    fn lt(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::Integer => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left < right
+            }
+            DataType::Float => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<f64>().unwrap();
+                let right = right.parse::<f64>().unwrap();
+                left - right < f64::EPSILON
+            },
+            DataType::Date => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left < right
+            }
+            DataType::Time => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left < right
+            }
+            _ => {
+                false
+            }
+        }
+    }
+    fn lteq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::Integer => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left <= right
+            },
+            DataType::Float => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<f64>().unwrap();
+                let right = right.parse::<f64>().unwrap();
+                left - right <= f64::EPSILON
+            }
+            DataType::Date => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left <= right
+            }
+            DataType::Time => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left <= right
+            }
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn neq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                left != right
+            }
+            DataType::Integer => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left != right
+            },
+            DataType::Float => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<f64>().unwrap();
+                let right = right.parse::<f64>().unwrap();
+                (left - right) > f64::EPSILON
+            }
+            DataType::Date => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left != right
+            }
+            DataType::Time => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = right.parse::<i64>().unwrap();
+                left != right
+            }
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn isA(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String
+            | DataType::Integer
+            | DataType::Float
+            | DataType::Date
+            | DataType::Time
+            => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_set().unwrap();
+                right.contains(&left)
+            },
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn hasPart(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String
+            | DataType::Integer
+            | DataType::Float
+            | DataType::Date
+            | DataType::Time
+            => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_set().unwrap();
+                right.contains(&left)
+            },
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn isPartOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String
+            | DataType::Integer
+            | DataType::Float
+            | DataType::Date
+            | DataType::Time
+            => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_set().unwrap();
+                right.contains(&left)
+            }
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn isAllOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String
+            | DataType::Integer
+            | DataType::Float
+            | DataType::Date
+            | DataType::Time
+            => {
+                let left = left.get_set().unwrap();
+                let right = right.get_set().unwrap();
+                left.iter().all(|x| right.contains(x))
+            }
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn isAnyOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String
+            | DataType::Integer
+            | DataType::Float
+            | DataType::Date
+            | DataType::Time
+            => {
+                let left = left.get_set().unwrap();
+                let right = right.get_set().unwrap();
+                left.iter().any(|x| right.contains(x))
+            }
+            _ => {
+                false
+            }
+        }
+    }
+    fn isNoneOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+        match dty {
+            DataType::String
+            | DataType::Integer
+            | DataType::Float
+            | DataType::Date
+            | DataType::Time
+            => {
+                let left = left.get_set().unwrap();
+                let right = right.get_set().unwrap();
+                let result = left.iter().any(|x| right.contains(x));
+                !result
+            }
+            _ => {
+                false
+            }
+        }
+    }
+}
 
 pub enum ConstraintLogicOperator {
     //http://www.w3.org/ns/odrl/2/or

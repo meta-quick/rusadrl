@@ -19,14 +19,16 @@
 
 use std::collections::HashMap;
 use iref::IriBuf;
-use lombok::{Builder, Getter, GetterMut, Setter};
+use lombok::{Builder};
+use crate::model::constraint_right_operand::ConstraintRightOperand;
 
-#[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
+#[derive(Debug,Default,Builder, Clone)]
 pub struct StateWorld {
     pub uid: Option<IriBuf>,
     pub state: HashMap<String, String>,
     pub worldInitialTime: i64,
     pub last_executeTime: i64,
+    pub operand_referred: HashMap<String,ConstraintRightOperand>
 }
 
 impl StateWorld {
@@ -57,7 +59,7 @@ impl StateWorld {
         self.state.insert(state.to_string(), value.to_string());
     }
 
-    pub fn eclispsed_datatime(&self) -> i64 {
+    pub fn eclipse_datetime(&self) -> i64 {
         let now = chrono::Utc::now().timestamp_millis();
         now - self.worldInitialTime
     }
@@ -69,5 +71,13 @@ impl StateWorld {
 
     pub fn last_execute_time(&self) -> i64 {
         self.last_executeTime
+    }
+
+    pub fn set_referred_operand(&mut self, iri: String, referred: ConstraintRightOperand) {
+        self.operand_referred.insert(iri, referred);
+    }
+
+    pub fn get_referred_operand(&self, iri: &str) -> Option<ConstraintRightOperand> {
+        self.operand_referred.get(iri).cloned()
     }
 }

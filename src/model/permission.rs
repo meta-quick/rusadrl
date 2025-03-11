@@ -16,7 +16,8 @@
 #![warn(non_snake_case)]
 
 use lombok::{Builder,Setter,GetterMut,Getter};
-
+use crate::model::asset::Asset;
+use crate::model::party::Party;
 use crate::model::rule::Rule;
 
 
@@ -24,4 +25,30 @@ use crate::model::rule::Rule;
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Permission {
     pub duty: Rule,
+}
+
+impl Permission {
+    pub fn set_assignee(&mut self, assignee: Option<Party>) {
+        self.duty.set_assignee(assignee);
+    }
+
+    pub fn get_assignee(&self) -> &Option<Party> {
+        self.duty.get_assignee()
+    }
+
+    pub fn set_assigner(&mut self, assigner: Option<Party>) {
+        self.duty.set_assigner(assigner);
+    }
+
+    pub fn get_assigner(&self) -> &Option<Party> {
+        self.duty.get_assigner()
+    }
+
+    pub fn set_target(&mut self, target: Option<Asset>) {
+        self.duty.set_target(target);
+    }
+
+    pub fn get_target(&self) -> &Option<Asset> {
+        self.duty.get_target()
+    }
 }

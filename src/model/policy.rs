@@ -16,13 +16,12 @@
 #![allow(non_snake_case)]
 
 use iref::IriBuf;
-use lombok::{Builder, Getter, GetterMut};
+use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::action::Action;
 use crate::model::asset::Asset;
 use crate::model::conflict_strategy::ConflictStrategy;
 use crate::model::constraint::Constraint;
 use crate::model::duty::Duty;
-use crate::model::rule::Rule;
 use crate::model::metadata::Metadata;
 use crate::traits::traits::Validate;
 
@@ -32,20 +31,20 @@ use crate::model::permission::Permission;
 use crate::model::prohibition::Prohibition;
 
 //Identifier:	http://www.w3.org/ns/odrl/2/Policy
-#[derive(Debug,Default,Builder,Getter,GetterMut,Clone)]
+#[derive(Debug,Default,Builder,Setter,Getter,GetterMut,Clone)]
 pub struct Policy {
     //Policy must have a unique identifier
     pub uid: Option<IriBuf>,
     pub profile: Option<Vec<IriBuf>>,
 
     pub action: Option<Action>,
-    pub assignee: Option<Vec<Party>>,
-    pub assigner: Option<Vec<Party>>,
+    pub assignee: Option<Party>,
+    pub assigner: Option<Party>,
     pub conflict: Option<ConflictStrategy>,
     pub permission: Option<Vec<Permission>>,
     pub prohibition: Option<Vec<Prohibition>>,
     pub obligation: Option<Vec<Duty>>,
-    pub target: Option<Vec<Asset>>,
+    pub target: Option<Asset>,
     pub inheritFrom : Option<Vec<IriBuf>>,
     pub constraint: Option<Vec<Constraint>>,
     pub relation: Option<Vec<IriBuf>>,
@@ -53,12 +52,6 @@ pub struct Policy {
 
     //Meta
     pub metadata: Option<Metadata>,
-}
-
-impl Default for Policy {
-    fn default() -> Self {
-        Self::default()
-    }
 }
 
 impl Validate for Policy {
@@ -118,14 +111,11 @@ impl Validate for Agreement {
               return result;
           }
 
-          let common_assignee = self.policy.get_assignee();
-          let common_assigner = self.policy.get_assigner();
-          let common_target = self.policy.get_target();
+          let common_assignee = self.policy.get_assignee().clone();
+          let common_assigner = self.policy.get_assigner().clone();
+          let common_target = self.policy.get_target().clone();
 
           let permissions = self.policy.get_permission_mut();
-          let obligations = self.policy.get_obligation_mut();
-          let prohibitions = self.policy.get_prohibition_mut();
-
           let mut has_permission = false;
           if permissions.is_some() {
              //check if permission has assignee, assigner, target
@@ -156,6 +146,7 @@ impl Validate for Agreement {
          }
 
          let mut has_obligation = false;
+         let obligations = self.policy.get_obligation_mut();
          if obligations.is_some() {
              for mut obligation in obligations.as_mut().unwrap() {
                  if obligation.get_assignee().is_none() {
@@ -181,6 +172,7 @@ impl Validate for Agreement {
          }
 
          let mut has_prohibition = false;
+        let prohibitions = self.policy.get_prohibition_mut();
          if prohibitions.is_some() {
             for mut prohibition in prohibitions.as_mut().unwrap() {
                 if prohibition.get_assignee().is_none() {

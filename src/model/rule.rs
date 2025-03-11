@@ -14,7 +14,6 @@
 
 #![allow(dead_code)]
 
-use anyhow::anyhow;
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 
@@ -22,17 +21,14 @@ use crate::model::metadata::Metadata;
 use crate::model::action::Action;
 use crate::model::asset::Asset;
 use crate::model::constraint::Constraint;
-use crate::model::error::OdrlError;
-use crate::model::error::OdrlError::Other;
 use crate::model::party::Party;
-use crate::traits::traits::Validate;
 
 //http://www.w3.org/ns/odrl/2/Rule
 #[derive(Debug,Builder,Getter,GetterMut,Setter,Default,Clone)]
 pub struct Rule {
     pub uid: Option<IriBuf>,
     pub action: Option<Action>,
-    pub target: Option<Party>,
+    pub target: Option<Asset>,
     pub constraint: Option<Vec<Constraint>>,
     pub assignee: Option<Party>,
     pub assigner: Option<Party>,

@@ -15,13 +15,39 @@
 #![allow(dead_code)]
 #![warn(non_snake_case)]
 
-use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
-
+use crate::model::asset::Asset;
+use crate::model::party::Party;
 use super::rule::Rule;
 
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Duty {
     pub rule: Rule,
     // pub consequence: IriBuf,
+}
+
+impl Duty {
+    pub fn set_assignee(&mut self, assignee: Option<Party>) {
+        self.rule.set_assignee(assignee);
+    }
+
+    pub fn get_assignee(&self) -> &Option<Party> {
+        self.rule.get_assignee()
+    }
+
+    pub fn set_assigner(&mut self, assigner: Option<Party>) {
+        self.rule.set_assigner(assigner);
+    }
+
+    pub fn get_assigner(&self) -> &Option<Party> {
+        self.rule.get_assigner()
+    }
+
+    pub fn set_target(&mut self, target: Option<Asset>) {
+        self.rule.set_target(target);
+    }
+
+    pub fn get_target(&self) -> &Option<Asset> {
+        self.rule.get_target()
+    }
 }
