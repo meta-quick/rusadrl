@@ -33,7 +33,7 @@ pub struct RightOperandReference {
     pub reference: Option<IriBuf>
 }
 
-#[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
+#[derive(Debug,Default,Builder,Getter,GetterMut,Setter,Clone)]
 pub struct ConstraintRightOperand {
     pub ty: RightOperandType,
     pub value: Option<String>,

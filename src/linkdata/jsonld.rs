@@ -215,7 +215,7 @@ mod test_jsonld {
     #[tokio::test]
     async fn test_fs_load() {
         use static_iref::iri;
-        use json_ld::{JsonLdProcessor, Options, RemoteDocumentReference};
+        use json_ld::{JsonLdProcessor, RemoteDocumentReference};
 
         let input = RemoteDocumentReference::iri(iri!("https://example.com/sample.jsonld").to_owned());
 

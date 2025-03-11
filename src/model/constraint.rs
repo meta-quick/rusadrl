@@ -18,12 +18,10 @@
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
-use crate::model::constraint_left_operand::ConstraintLeftOperand::meteredTime;
 use crate::model::constraint_operator::ConstraintLogicOperator;
 use crate::model::data_type::DataType;
 use crate::model::metadata::Metadata;
 use crate::model::stateworld::StateWorld;
-use crate::reference::types::OperandValue;
 use crate::traits::definions::LogicEval;
 use super::{constraint_left_operand::ConstraintLeftOperand, constraint_operator::ConstraintOperator, constraint_right_operand::ConstraintRightOperand};
 
@@ -194,7 +192,7 @@ impl LogicEval for LogicConstraint {
                                 return Ok(false);
                             }
                         }
-                        Err(e) => {
+                        Err(_) => {
                         }
                     }
                 }

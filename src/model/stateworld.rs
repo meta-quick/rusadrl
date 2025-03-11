@@ -22,7 +22,7 @@ use iref::IriBuf;
 use lombok::{Builder};
 use crate::model::constraint_right_operand::ConstraintRightOperand;
 
-#[derive(Debug,Default,Builder, Clone)]
+#[derive(Debug,Default,Builder,Clone)]
 pub struct StateWorld {
     pub uid: Option<IriBuf>,
     pub state: HashMap<String, String>,

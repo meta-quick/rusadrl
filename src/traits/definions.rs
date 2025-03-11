@@ -14,7 +14,6 @@
 
 #![allow(dead_code)]
 
-use anyhow::Error;
 use crate::model::stateworld::StateWorld;
 
 pub trait LogicEval {

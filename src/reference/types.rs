@@ -16,7 +16,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use lombok::{Builder, Getter, GetterMut, Setter};
+use lombok::{Builder,Setter};
 
 #[derive(Debug,Default, Clone)]
 pub enum OperandValueType {
