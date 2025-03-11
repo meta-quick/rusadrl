@@ -18,9 +18,11 @@
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
+use crate::model::constraint_operator::ConstraintLogicOperator;
 use crate::model::data_type::DataType;
 use crate::model::metadata::Metadata;
 use crate::model::stateworld::StateWorld;
+use crate::reference::types::OperandValue;
 use crate::traits::definions::LogicEval;
 use super::{constraint_left_operand::ConstraintLeftOperand, constraint_operator::ConstraintOperator, constraint_right_operand::ConstraintRightOperand};
 
@@ -99,6 +101,53 @@ impl LogicEval for Constraint {
             }
             Err(e) => {
                 Err(e)
+            }
+        }
+    }
+}
+
+
+#[derive(Debug,Builder,Default,Getter,GetterMut,Setter, Clone)]
+pub struct LogicConstraint {
+    pub uid: Option<IriBuf>,
+    pub operator: Option<ConstraintLogicOperator>,
+    pub operand: Option<Vec<Constraint>>
+}
+
+impl LogicConstraint {
+
+}
+
+impl LogicEval for LogicConstraint {
+    fn eval(&mut self, mut world: &mut StateWorld) -> Result<bool, anyhow::Error> {
+        if let None = self.uid {
+            return Err(anyhow::Error::msg("No uid defined"));
+        }
+
+        if let None = self.operator {
+            return Err(anyhow::Error::msg("No operator defined"));
+        }
+
+        let operator = self.operator.as_ref().unwrap();
+        match operator {
+            ConstraintLogicOperator::or => {
+                let operands = self.operand.as_ref().unwrap();
+                for operand in operands {
+                    let result = operand.eval(&mut world).unwrap();
+                    if result {
+                        return Ok(true);
+                    }
+                }
+                return Ok(false);
+            }
+            ConstraintLogicOperator::xone => {
+
+            }
+            ConstraintLogicOperator::and => {
+
+            }
+            ConstraintLogicOperator::andSequence => {
+
             }
         }
     }

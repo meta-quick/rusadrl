@@ -455,6 +455,7 @@ impl ConstraintOperator {
     }
 }
 
+#[derive(Debug,Clone)]
 pub enum ConstraintLogicOperator {
     //http://www.w3.org/ns/odrl/2/or
     or,
