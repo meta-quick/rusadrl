@@ -202,6 +202,12 @@ impl LogicEval for LogicConstraint {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ConstraintUnion {
+    Constraint(Constraint),
+    LogicConstraint(LogicConstraint),
+}
+
 #[cfg(test)]
 mod tests {
     use crate::model::constraint_right_operand::RightOperandType;

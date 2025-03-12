@@ -18,9 +18,14 @@
 
 
 use std::collections::HashMap;
+use std::sync::Mutex;
 use iref::IriBuf;
 use lombok::{Builder};
+use once_cell::unsync::Lazy;
+use crate::model::asset::{Asset, AssetCollection};
+use crate::model::constraint::Constraint;
 use crate::model::constraint_right_operand::ConstraintRightOperand;
+use crate::model::policy::Policy;
 
 #[derive(Debug,Default,Builder,Clone)]
 pub struct StateWorld {
@@ -28,7 +33,9 @@ pub struct StateWorld {
     pub state: HashMap<String, String>,
     pub worldInitialTime: i64,
     pub last_executeTime: i64,
-    pub operand_referred: HashMap<String,ConstraintRightOperand>
+    pub operand_referred: HashMap<String,ConstraintRightOperand>,
+    pub assets: HashMap<String, AssetCollection>,
+    pub global_policies: HashMap<String, Policy>,
 }
 
 impl StateWorld {
@@ -80,4 +87,32 @@ impl StateWorld {
     pub fn get_referred_operand(&self, iri: &str) -> Option<ConstraintRightOperand> {
         self.operand_referred.get(iri).cloned()
     }
+    pub fn get_assets(&self,iri: String) -> Option<AssetCollection> {
+        self.assets.get(&iri).cloned()
+    }
+
+    pub fn add_assets(&mut self,iri: String,assets: AssetCollection) {
+        self.assets.insert(iri.to_string(), assets);
+    }
+
+    pub fn get_policy(&self,iri: String) -> Option<Policy> {
+        self.global_policies.get(&iri).cloned()
+    }
+
+    pub fn add_policy(&mut self,iri: String,policy: Policy) {
+        self.global_policies.insert(iri.to_string(), policy);
+    }
 }
+
+type Cache = HashMap<String, StateWorld>;
+// static GLOBAL_WORLD_CACHE: Lazy<Mutex<Cache>> = Lazy::new(|| Mutex::new(HashMap::new()));
+//
+// pub fn get_global_world(iri: &str) -> Option<StateWorld> {
+//     let mut cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+//     cache.get(iri).cloned()
+// }
+//
+// pub fn add_global_world(iri: &str, world: StateWorld) {
+//     let mut cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+//     cache.insert(iri.to_string(), world);
+// }

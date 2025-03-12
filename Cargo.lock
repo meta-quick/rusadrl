@@ -2271,6 +2271,7 @@ dependencies = [
  "linked-data-derive",
  "lombok",
  "mime",
+ "once_cell",
  "reqwest 0.12.12",
  "serde",
  "serde_json",

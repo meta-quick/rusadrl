@@ -18,8 +18,10 @@
 use anyhow::anyhow;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::conflict_strategy::ConflictStrategy;
-use crate::model::constraint::Constraint;
+use crate::model::constraint::{ConstraintUnion};
 use crate::model::metadata::Metadata;
+use crate::model::stateworld::StateWorld;
+use crate::traits::definions::LogicEval;
 
 #[derive(Debug,Clone,PartialEq)]
 pub enum ActionType {
@@ -138,7 +140,7 @@ pub struct Action {
     //An action must have one IncludedIn except use and transfer
     pub includedIn: Option<Vec<Action>>,
     pub implies: Option<Vec<Action>>,
-    pub refinements: Option<Vec<Constraint>>,
+    pub refinements: Option<Vec<ConstraintUnion>>,
     pub metadata: Metadata,
 }
 
@@ -207,9 +209,10 @@ impl TryFrom<&str> for ActionType {
     } 
 }
 
+#[derive(Debug,Default,Clone)]
 pub struct ActionExecutor;
 impl ActionExecutor {
-   pub fn obligate(obligations: Option<Vec<Action>>, action: Action) ->  Result<bool, anyhow::Error> {
+   pub fn obligate(world: &mut StateWorld,obligations: Option<Vec<Action>>, action: Action) ->  Result<bool, anyhow::Error> {
        let mut obligated = false;
        if let Some(obligations) = obligations {
            for obligation in obligations {
@@ -240,7 +243,7 @@ impl ActionExecutor {
        }
        return Ok(obligated);
    }
-   pub fn check_action(strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
+   pub fn check_action(world: &mut StateWorld,strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
        //check if the action is in the permission list
        let mut permited = false;
        if let Some(perm) = permissions {
@@ -297,13 +300,44 @@ impl ActionExecutor {
            }
        }
 
-       //in permission and no in prohibition
-       if permited && !prohibed {
+       //check refinements
+       let mut refined = true;
+       if let Some(refinements) = action.get_refinements() {
+           for refinement in refinements {
+                match refinement {
+                    ConstraintUnion::Constraint(constraint) => {
+                        let mut world = world.clone();
+                        let ret = constraint.eval(&mut world);
+                        match ret {
+                            Ok(false) => {
+                               refined = false;
+                            }
+                            _ => {
+                            }
+                        }
+                    }
+                    ConstraintUnion::LogicConstraint(constraint) => {
+                        let mut world = world.clone();
+                        let ret = constraint.eval(&mut world);
+                        match ret {
+                            Ok(false) => {
+                                refined = false;
+                            }
+                            _ => {
+                            }
+                        }
+                    }
+                }
+           }
+       }
+
+       //in permission and no in prohibition and refinement is true
+       if permited && !prohibed && refined {
            return Ok(true);
        }
 
-       //in permission and in prohibition
-       if permited && prohibed {
+       //in permission and in prohibition and refinement is true
+       if permited && prohibed && refined {
            match strategy {
                ConflictStrategy::perm => {
                    return Ok(true);
@@ -316,6 +350,12 @@ impl ActionExecutor {
                }
            }
        }
+
+       //refinement is false
+       if !refined {
+           return Ok(false);
+       }
+
        return Err(anyhow!("Invalid action"));
    }
 }
