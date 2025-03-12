@@ -114,3 +114,109 @@ Inferred
         odrl:assignee ex:Alice
     ] .
 ```
+#### Inferences derived from odrl:implies
+```xml
+odrl:share odrl:implies odrl:distribute . 
+odrl:move odrl:implies odrl:delete . 
+
+<http://odrlapi.appspot.com/samples/sample079>
+    a odrl:Policy;
+    odrl:permission [
+        a odrl:Permission ;
+        odrl:target ex:PartA ;
+        odrl:action odrl:share ;
+        odrl:assignee ex:Bob
+    ] ;
+    odrl:prohibition [
+        a odrl:Prohibition ;
+        odrl:target ex:PartB ;
+        odrl:action odrl:move ;
+        odrl:assignee ex:Bob
+    ] .
+```
+
+Inferred
+
+```xml
+<http://odrlapi.appspot.com/samples/sample079>
+    a odrl:Policy;
+    odrl:permission [
+        a odrl:Permission ;
+        odrl:target ex:PartA ;
+        odrl:action odrl:share ;
+        odrl:action odrl:distribute ; 
+        odrl:assignee ex:Bob
+    ] ;
+    odrl:prohibition [
+        a odrl:Prohibition ;
+        odrl:target ex:PartB ;
+        odrl:action odrl:move ;
+        odrl:assignee ex:Bob
+    ] .
+```
+
+#### Interiorizing policy-level properties
+```xml
+<http://odrlapi.appspot.com/samples/sample001x>
+    odrl:target <http://odrlapi.appspot.com/samples/asset000> ;
+    odrl:permission [
+        odrl:action odrl:reproduce
+    ];
+    odrl:prohibition[
+        odrl:action odrl:print
+    ] .
+```
+
+expanded
+```xml
+<http://odrlapi.appspot.com/samples/sample001x>
+    odrl:permission [
+        odrl:action odrl:reproduce ;
+        odrl:target <http://odrlapi.appspot.com/samples/asset000> 
+    ];
+    odrl:prohibition[
+        odrl:action odrl:print ;
+        odrl:target <http://odrlapi.appspot.com/samples/asset000> 
+    ] .
+```
+
+#### Application of inheritance rules
+```xml
+<http://odrlapi.appspot.com/samples/sample045>
+    odrl:assigner <http://example.com/org-01> ;
+    odrl:obligation [
+        odrl:target <http://example.com/asset:terms-and-conditions> ;
+        odrl:action odrl:reviewPolicy
+    ] .
+<http://odrlapi.appspot.com/samples/sample045b>
+    a odrl:Agreement ;
+    odrl:inheritFrom <http://odrlapi.appspot.com/samples/sample045> ;
+    odrl:assignee <http://example.com/user:0001> ;
+    odrl:permission [
+        odrl:target <http://example.com/asset:555> ;
+        odrl:action odrl:display
+    ] .
+```
+
+Expanded
+
+```xml
+<http://odrlapi.appspot.com/samples/sample045>
+    odrl:assigner <http://example.com/org-01> ;
+    odrl:obligation [
+        odrl:target <http://example.com/asset:terms-and-conditions> ;
+        odrl:action odrl:reviewPolicy
+    ] .
+<http://odrlapi.appspot.com/samples/sample045b>
+    a odrl:Agreement ;
+    odrl:assignee <http://example.com/user:0001> ;
+    odrl:permission [
+        odrl:target <http://example.com/asset:555> ;
+        odrl:action odrl:display
+    ]  ;
+    odrl:assigner <http://example.com/org-01> ;
+    odrl:obligation [
+        odrl:target <http://example.com/asset:terms-and-conditions> ;
+        odrl:action odrl:reviewPolicy
+    ] .
+```
