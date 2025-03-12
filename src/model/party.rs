@@ -17,12 +17,14 @@
 
 use iref::IriBuf;
 use lombok::{Getter,Builder,Setter,GetterMut};
-
+use crate::model::constraint::ConstraintUnion;
 use crate::model::metadata::Metadata;
+use crate::model::stateworld::StateWorld;
 
 #[derive(Debug,Builder,Getter,GetterMut,Setter, Default, Clone)]
 pub struct PartyCollection {
     pub source: Option<IriBuf>,
+    pub refinement: Vec<ConstraintUnion>,
     pub metadata: Metadata,
 }
 
@@ -44,5 +46,9 @@ impl Party {
             assignerOf: None,
             assigneeOf: None,
         }
+    }
+
+    pub fn check(&self, world: &mut StateWorld, party: &Party) -> bool {
+        let iri = party.get_uid().clone();
     }
 }
