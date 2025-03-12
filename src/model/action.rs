@@ -240,7 +240,7 @@ impl ActionExecutor {
        }
        return Ok(obligated);
    }
-   pub fn execute(strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
+   pub fn check_action(strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
        //check if the action is in the permission list
        let mut permited = false;
        if let Some(perm) = permissions {
