@@ -16,8 +16,10 @@
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
+use clap::Parser;
+
 //http://www.w3.org/ns/odrl/2/ConflictTerm
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq,PartialOrd)]
 pub enum ConflictStrategy {
     //http://www.w3.org/ns/odrl/2/prohibit
     prohibit,

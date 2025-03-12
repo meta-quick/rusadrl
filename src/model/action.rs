@@ -15,12 +15,13 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+use anyhow::anyhow;
 use lombok::{Builder, Getter, GetterMut, Setter};
-
+use crate::model::conflict_strategy::ConflictStrategy;
 use crate::model::constraint::Constraint;
 use crate::model::metadata::Metadata;
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum ActionType {
     //http://www.w3.org/ns/odrl/2/acceptTracking
     AcceptTracking,
@@ -119,7 +120,10 @@ pub enum ActionType {
     //http://www.w3.org/ns/odrl/2/uninstall
     Uninstall,
     //http://www.w3.org/ns/odrl/2/watermark
-    Watermark
+    Watermark,
+    //top level action
+    Use,
+    Transfer
 }
 
 impl Default for ActionType {
@@ -131,6 +135,7 @@ impl Default for ActionType {
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Action {
     pub actionType: ActionType,
+    //An action must have one IncludedIn except use and transfer
     pub includedIn: Option<Vec<Action>>,
     pub implies: Option<Vec<Action>>,
     pub refinements: Option<Vec<Constraint>>,
@@ -140,11 +145,6 @@ pub struct Action {
 impl Action {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn evaluate(&self, action: Action) -> bool {
-        //TODO: Implement this method
-        return false;
     }
 }
 
@@ -205,4 +205,117 @@ impl TryFrom<&str> for ActionType {
             _ => Err(format!("Invalid action type: {}", value))
         }
     } 
+}
+
+pub struct ActionExecutor;
+impl ActionExecutor {
+   pub fn obligate(obligations: Option<Vec<Action>>, action: Action) ->  Result<bool, anyhow::Error> {
+       let mut obligated = false;
+       if let Some(obligations) = obligations {
+           for obligation in obligations {
+               if obligation.actionType == action.actionType {
+                   obligated = true;
+                   break;
+               }
+
+               if let Some(includes) = action.get_includedIn() {
+                   for incl in includes {
+                        if incl.actionType == obligation.actionType {
+                            obligated = true;
+                            break;
+                        }
+                   }
+               }
+
+               if let Some(implies) = action.get_implies() {
+                   for impls in implies {
+                       if impls.actionType == obligation.actionType {
+                           obligated = true;
+                           break;
+                       }
+                   }
+               }
+
+           }
+       }
+       return Ok(obligated);
+   }
+   pub fn execute(strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
+       //check if the action is in the permission list
+       let mut permited = false;
+       if let Some(perm) = permissions {
+           for perm in perm {
+               //action type is the same
+               if perm.actionType == action.actionType {
+                   permited = true;
+                   break;
+               }
+               if let Some(includes) = action.get_includedIn() {
+                   for incl in includes {
+                        if incl.actionType == perm.actionType {
+                            permited = true;
+                            break;
+                        }
+                   }
+               }
+               if let Some(implies) = action.get_implies() {
+                   for impls in implies {
+                       if impls.actionType == perm.actionType {
+                           permited = true;
+                           break;
+                       }
+                   }
+               }
+           }
+       }
+
+       let mut prohibed = false;
+       if let Some(prohibitions) = prohibitions {
+           for prohibition in prohibitions {
+               if prohibition.actionType == action.actionType {
+                   prohibed = true;
+                   break;
+               }
+
+               if let Some(includes) = action.get_includedIn() {
+                   for incl in includes {
+                        if incl.actionType == prohibition.actionType {
+                            prohibed = true;
+                            break;
+                        }
+                   }
+               }
+
+               if let Some(implies) = action.get_implies() {
+                   for impls in implies {
+                       if impls.actionType == prohibition.actionType {
+                           prohibed = true;
+                           break;
+                       }
+                   }
+               }
+           }
+       }
+
+       //in permission and no in prohibition
+       if permited && !prohibed {
+           return Ok(true);
+       }
+
+       //in permission and in prohibition
+       if permited && prohibed {
+           match strategy {
+               ConflictStrategy::perm => {
+                   return Ok(true);
+               },
+               ConflictStrategy::prohibit => {
+                   return Ok(false);
+               },
+               ConflictStrategy::invalid => {
+                   return Err(anyhow!("Invalid action"));
+               }
+           }
+       }
+       return Err(anyhow!("Invalid action"));
+   }
 }

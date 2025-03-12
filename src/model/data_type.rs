@@ -70,9 +70,10 @@ impl TryFrom<String> for DataType {
             "boolean" => Ok(Self::Boolean),
             "date" => Ok(Self::Date),
             "time"
-            | "dateTime"
-            | "dateTimeStamp"
             => Ok(Self::Time),
+            "dateTime"
+            | "dateTimeStamp"
+            => Ok(Self::DateTime),
             _ => Err(anyhow::anyhow!("Unsupported data type")),
         }
     }
