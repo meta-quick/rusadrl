@@ -104,9 +104,10 @@ impl Asset {
         if let Some(hasPolicy) = hasPolicy {
             let hasPolicy = hasPolicy.to_string();
             let policy = world.get_policy(hasPolicy);
-            if let Some(policy) = policy {
-                return policy.check(world, asset);
-            }
+            //TODO: check policy later
+            // if let Some(policy) = policy {
+            //     return policy.check(world, asset);
+            // }
         }
 
         if iri == target {
@@ -119,11 +120,11 @@ impl Asset {
         if let Some(partOf) = partOf {
             for part in partOf {
                 let part = part.to_string();
-                //query partOf asset
+                //query partOf asset, if any one of them is refined, then return true
                 let ac = world.get_assets(part);
                 if let Some(ac) = ac {
-                    if !ac.check(world, asset) {
-                        return false;
+                    if ac.check(world, asset) {
+                        return true;
                     }
                 }
             }
