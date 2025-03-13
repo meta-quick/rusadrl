@@ -86,15 +86,16 @@ impl PartyInferencer {
                 if candidate_uid == self_uid {
                     //check refinement
                     if let Some(refinement) = party.get_refinement() {
+                        let mut refined = false;
                         for constraint in refinement {
                             match constraint {
                                 ConstraintUnion::Constraint(constraint) => {
                                     let ret = constraint.eval(world);
                                     match ret {
                                         Ok(ret) => {
-                                            return Ok(ret);
+                                            refined = true;
                                         },
-                                        Err(_) => {
+                                        _ => {
                                         }
                                     }
                                 }
@@ -102,14 +103,15 @@ impl PartyInferencer {
                                     let ret = ac.eval(world);
                                     match ret {
                                         Ok(ret) => {
-                                            return Ok(ret);
+                                            refined = true;
                                         },
-                                        Err(_) => {
+                                        _ => {
                                         }
                                     }
                                 }
                             }
                         }
+                        return Ok(refined);
                     } else {
                         return Ok(true);
                     }
@@ -129,66 +131,32 @@ impl PartyInferencer {
                     if candidate_uid == source {
                         //check refinement
                         if let Some(refinement) = partyCollect.get_refinement() {
+                            let mut refined = false;
                             for constraint in refinement {
                                 match constraint {
                                     ConstraintUnion::Constraint(constraint) => {
                                         let ret = constraint.eval(world);
                                         match ret {
-                                            Ok(ret) => {
-                                                return Ok(ret);
+                                            Ok(true) => {
+                                                refined = true;
                                             }
-                                            Err(_) => {}
+                                            _ => {}
                                         }
                                     }
                                     ConstraintUnion::LogicConstraint(ac) => {
                                         let ret = ac.eval(world);
                                         match ret {
-                                            Ok(ret) => {
-                                                return Ok(ret);
+                                            Ok(true) => {
+                                                refined = true;
                                             }
-                                            Err(_) => {}
+                                            _ => {}
                                         }
                                     }
                                 }
                             }
+                            return Ok(refined);
                         }
-                    }
-                }
-
-                //else check if is part of the party collection
-                if let Some(source) = partyCollect.get_source() {
-                    let source = source.as_str();
-                    let partOf = candidate.get_partOf();
-                    for part in partOf {
-                        if part.as_str() == source {
-                            //check refinement
-                            if let Some(refinement) = partyCollect.get_refinement() {
-                                for constraint in refinement {
-                                    match constraint {
-                                        ConstraintUnion::Constraint(constraint) => {
-                                            let ret = constraint.eval(world);
-                                            match ret {
-                                                Ok(ret) => {
-                                                    return Ok(ret);
-                                                }
-                                                Err(_) => {}
-                                            }
-                                        }
-                                        ConstraintUnion::LogicConstraint(ac) => {
-                                            let ret = ac.eval(world);
-                                            match ret {
-                                                Ok(ret) => {
-                                                    return Ok(ret);
-                                                }
-                                                Err(_) => {}
-                                            }
-                                        }
-                                    }
-                                }
-                            }else {
-                                return Ok(true);
-                            }
-                        }
+                        return Ok(true);
                     }
                 }
             }
