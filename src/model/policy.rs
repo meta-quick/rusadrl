@@ -72,7 +72,7 @@ impl Validate for Policy {
         //check conflict
         let conflict = self.get_conflict();
         if conflict.is_none() {
-            self.set_conflict(Some(ConflictStrategy::perm));
+            self.set_conflict(Some(perm));
         }
 
         Ok(())
@@ -260,11 +260,26 @@ pub struct OdrlRequest{
 impl Evaluator for Agreement  {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
        let policy = &self.policy;
+       let mut conflict = policy.get_conflict().clone();
+       if conflict.is_none() {
+           conflict = Some(ConflictStrategy::perm);
+       }
 
-       /*
-        *
-        */
-       let action_inference = ActionInferencer::default();
+       let candidate = req.get_action().clone();
+       if candidate.is_none() {
+           return Ok(false);
+       }
+
+       //check allow permissions
+       let permissions = policy.get_permission();
+       if permissions.is_none() {
+          return Ok(false);
+       }
+
+
+       //check deny prohibitions
+       let permissions = policy.get_prohibition();
+
 
        Ok(true)
     }
