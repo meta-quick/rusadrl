@@ -31,52 +31,6 @@ pub struct AssetCollection {
     pub metadata: Metadata,
 }
 
-impl AssetCollection {
-    pub fn check(&self,world: &mut StateWorld, asset: &Asset) -> bool {
-        let iri = asset.get_uid().clone();
-        if iri.is_none() {
-            return false;
-        }
-        let iri = iri.unwrap();
-        let iri = iri.as_str();
-        let source = self.source.as_ref().unwrap().as_str();
-
-        //check refinement
-        let refinement = self.get_refinement();
-        let mut refined = true;
-        if let Some(refinement) = refinement {
-            for constraint in refinement {
-                match constraint {
-                    ConstraintUnion::Constraint(constraint) => {
-                        let mut world = world.clone();
-                        let ret = constraint.eval(&mut world);
-                        match ret {
-                            Ok(false) => {
-                                refined = false;
-                            }
-                            _ => {
-                            }
-                        }
-                    }
-                    ConstraintUnion::LogicConstraint(ac) => {
-                        let mut world = world.clone();
-                        let ret = ac.eval(&mut world);
-                        match ret {
-                            Ok(false) => {
-                                refined = false;
-                            }
-                            _ => {
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        iri == source && refined
-    }
-}
-
 //http://www.w3.org/ns/odrl/2/Asset
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Asset {
@@ -90,48 +44,94 @@ pub struct Asset {
     pub metadata: Option<Metadata>,
 }
 
-impl Asset {
-    pub fn check(&self, world: &mut StateWorld, asset: &Asset) -> bool {
-        let iri = asset.get_uid().clone();
-        if iri.is_none() {
-            return false;
-        }
-        let iri = iri.unwrap();
-        let iri = iri.as_str();
-        let binding = self.get_uid().clone().unwrap();
-        let target = binding.as_str();
+pub enum AssetUnion {
+    Asset(Asset),
+    AssetCollection(AssetCollection),
+}
 
-        //check has policy
-        let hasPolicy = self.get_hasPolicy();
-        if let Some(hasPolicy) = hasPolicy {
-            let hasPolicy = hasPolicy.to_string();
-            let policy = world.get_policy(hasPolicy);
-            //TODO: check policy later
-            // if let Some(policy) = policy {
-            //     return policy.check(world, asset);
-            // }
-        }
+pub struct AssetInferencer;
+impl AssetInferencer {
+    pub fn infer_asset(world: &mut StateWorld, asset: AssetUnion,candidate: Asset) -> Result<bool, anyhow::Error>{
+        match asset {
+            AssetUnion::Asset(asset) => {
+                //Only need to check uid and partOf
+                let asset_uid = asset.get_uid();
+                if let None = asset_uid {
+                    return Ok(false);
+                }
+                let asset_uid = asset_uid.clone().unwrap();
+                let asset_uid = asset_uid.as_str();
 
-        if iri == target {
-            return true;
-        }
+                let candidate_uid = candidate.get_uid();
+                if let None = candidate_uid {
+                    return Ok(false);
+                }
+                let candidate_uid = candidate_uid.clone().unwrap();
+                let candidate_uid = candidate_uid.as_str();
 
-        //check partOf
-        let mut part_refined = false;
-        let partOf = self.get_partOf();
-        if let Some(partOf) = partOf {
-            for part in partOf {
-                let part = part.to_string();
-                //query partOf asset, if any one of them is refined, then return true
-                let ac = world.get_assets(part);
-                if let Some(ac) = ac {
-                    if ac.check(world, asset) {
-                        return true;
+                if asset_uid == candidate_uid {
+                    return Ok(true);
+                }
+
+                /*
+                 * PartOf:
+                 * 1. Check if candidate is in partOf of the asset
+                 */
+            }
+            AssetUnion::AssetCollection(collection) => {
+                let collection_uid = collection.get_source();
+                if let None = collection_uid {
+                    return Ok(false);
+                }
+                let collection_uid = collection_uid.clone().unwrap();
+                let collection_uid = collection_uid.as_str();
+
+                let candidate_uid = candidate.get_uid();
+                if let None = candidate_uid {
+                    return Ok(false);
+                }
+                let candidate_uid = candidate_uid.clone().unwrap();
+                let candidate_uid = candidate_uid.as_str();
+
+                if collection_uid == candidate_uid {
+                    //check refinement
+                    let refinement = collection.get_refinement();
+                    if let Some(refinement) = refinement {
+                        let mut refined = true;
+                        for constraint in refinement {
+                            match constraint {
+                                ConstraintUnion::Constraint(constraint) => {
+                                    let mut world = world.clone();
+                                    let ret = constraint.eval(&mut world);
+                                    match ret {
+                                        Ok(false) => {
+                                            refined = false;
+                                        }
+                                        _ => {
+
+                                        }
+                                    }
+                                }
+                                ConstraintUnion::LogicConstraint(ac) => {
+                                    let mut world = world.clone();
+                                    let ret = ac.eval(&mut world);
+                                    match ret {
+                                        Ok(false) => {
+                                            refined = false;
+                                        }
+                                        _ => {
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        return Ok(refined);
                     }
+                    return Ok(true);
                 }
             }
         }
-
-        false
+        Ok(false)
     }
 }
