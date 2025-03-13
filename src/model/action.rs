@@ -210,44 +210,13 @@ impl TryFrom<&str> for ActionType {
 }
 
 #[derive(Debug,Default,Clone)]
-pub struct ActionExecutor;
-impl ActionExecutor {
-   pub fn obligate(world: &mut StateWorld,obligations: Option<Vec<Action>>, action: Action) ->  Result<bool, anyhow::Error> {
-       let mut obligated = false;
-       if let Some(obligations) = obligations {
-           for obligation in obligations {
-               if obligation.actionType == action.actionType {
-                   obligated = true;
-                   break;
-               }
-
-               if let Some(includes) = action.get_includedIn() {
-                   for incl in includes {
-                        if incl.actionType == obligation.actionType {
-                            obligated = true;
-                            break;
-                        }
-                   }
-               }
-
-               if let Some(implies) = action.get_implies() {
-                   for impls in implies {
-                       if impls.actionType == obligation.actionType {
-                           obligated = true;
-                           break;
-                       }
-                   }
-               }
-
-           }
-       }
-       return Ok(obligated);
-   }
-   pub fn check_action(world: &mut StateWorld,strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
+pub struct ActionInferencer;
+impl ActionInferencer {
+   pub fn infer_action(world: &mut StateWorld,strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
        //check if the action is in the permission list
        let mut permited = false;
-       if let Some(perm) = permissions {
-           for perm in perm {
+       if let Some(perms) = permissions {
+           for perm in perms {
                //action type is the same
                if perm.actionType == action.actionType {
                    permited = true;

@@ -14,7 +14,7 @@
 #![allow(dead_code)]
 #![warn(non_snake_case)]
 #![allow(unused_imports)]
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types)]
 
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::constraint_left_operand::ConstraintLeftOperand;
@@ -110,12 +110,8 @@ impl ConstraintOperator {
             },
             ConstraintOperator::isNoneOf => {
                 return self.isNoneOf(dty,left,right);
-            },
-            _ => {
-                return false;
             }
         }
-        true
     }
 
     fn gt(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {

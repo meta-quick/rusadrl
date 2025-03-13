@@ -158,7 +158,7 @@ impl LogicEval for LogicConstraint {
                                 return Ok(true);
                             }
                         }
-                        Err(e) => {
+                        Err(_) => {
                         }
                     }
                 }
@@ -175,7 +175,7 @@ impl LogicEval for LogicConstraint {
                                 count += 1;
                             }
                         }
-                        Err(e) => {
+                        Err(_) => {
                         }
                     }
                 }
@@ -263,7 +263,7 @@ mod tests {
         constraint2.set_rightOperand(Some(right));
 
 
-        let mut logic_constraint = LogicConstraint::builder()
+        let logic_constraint = LogicConstraint::builder()
                         .uid(Some(
                             IriBuf::new("http://www.w3.org/ns/odrl/2/LogicalConstraint".to_string()).unwrap(),
                          ))

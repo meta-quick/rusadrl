@@ -16,7 +16,7 @@ use json_ld::syntax::Parse;
 use json_ld::LoadError;
 use json_ld::{Loader, RemoteDocument, syntax::Value};
 use json_ld::iref::{Iri, IriBuf};
-use reqwest::{Client, Proxy};
+use reqwest::{Client};
 use std::collections::HashMap;
 use std::sync::Arc;
 use json_ld_core::fs::Error;

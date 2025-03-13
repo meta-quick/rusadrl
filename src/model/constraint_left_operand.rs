@@ -156,9 +156,6 @@ impl  ConstraintLeftOperand {
 
                 Ok(val)
             }
-            _ => {
-                Err(anyhow!("Not supported yet!"))
-            }
         }
     }
 }

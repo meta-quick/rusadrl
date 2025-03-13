@@ -15,15 +15,13 @@
 
 #![allow(dead_code)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 use iref::IriBuf;
 use lombok::{Builder};
-use once_cell::unsync::Lazy;
-use crate::model::asset::{Asset, AssetCollection};
-use crate::model::constraint::Constraint;
+use crate::model::asset::{AssetCollection};
 use crate::model::constraint_right_operand::ConstraintRightOperand;
 use crate::model::policy::Policy;
 

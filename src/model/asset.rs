@@ -37,7 +37,8 @@ impl AssetCollection {
         if iri.is_none() {
             return false;
         }
-        let iri = iri.unwrap().as_str();
+        let iri = iri.unwrap();
+        let iri = iri.as_str();
         let source = self.source.as_ref().unwrap().as_str();
 
         //check refinement
@@ -59,7 +60,7 @@ impl AssetCollection {
                     }
                     ConstraintUnion::LogicConstraint(ac) => {
                         let mut world = world.clone();
-                        let ret = constraint.eval(&mut world);
+                        let ret = ac.eval(&mut world);
                         match ret {
                             Ok(false) => {
                                 refined = false;
@@ -95,9 +96,10 @@ impl Asset {
         if iri.is_none() {
             return false;
         }
-
-        let iri = iri.unwrap().as_str();
-        let target = self.get_uid().clone().unwrap().as_str();
+        let iri = iri.unwrap();
+        let iri = iri.as_str();
+        let binding = self.get_uid().clone().unwrap();
+        let target = binding.as_str();
 
         //check has policy
         let hasPolicy = self.get_hasPolicy();

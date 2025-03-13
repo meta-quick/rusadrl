@@ -26,7 +26,7 @@ use crate::traits::definions::LogicEval;
 #[derive(Debug,Builder,Getter,GetterMut,Setter, Default, Clone)]
 pub struct PartyCollection {
     pub source: Option<IriBuf>,
-    pub refinement: Vec<ConstraintUnion>,
+    pub refinement: Option<Vec<ConstraintUnion>>,
     pub metadata: Metadata,
 }
 
@@ -63,23 +63,25 @@ pub enum PartyUnion {
 }
 
 #[derive(Debug,Default,Clone)]
-pub struct PartyInferencor;
+pub struct PartyInferencer;
 
-impl PartyInferencor {
+impl PartyInferencer {
     pub fn infer_party(world: &mut StateWorld, party: PartyUnion,candidate: Party) -> Result<bool, anyhow::Error>{
         match party {
             PartyUnion::Party(party) => {
                 let candidate_uid = candidate.get_uid();
-                if let None = candidate {
+                if let None = candidate_uid {
                     return Err(anyhow!("Party uid is None"));
                 }
-                let candidate_uid = candidate_uid.clone().unwrap().as_str();
+                let candidate_uid = candidate_uid.clone().unwrap();
+                let candidate_uid = candidate_uid.as_str();
 
                 let self_uid = party.get_uid();
                 if let None = self_uid {
                     return Err(anyhow!("Party uid is None"));
                 }
-                let self_uid = self_uid.clone().unwrap().as_str();
+                let self_uid = self_uid.clone().unwrap();
+                let self_uid = self_uid.as_str();
 
                 if candidate_uid == self_uid {
                     //check refinement
@@ -119,10 +121,10 @@ impl PartyInferencor {
                 if let None = candidate_uid {
                     return Err(anyhow!("Party uid is None"));
                 }
-                let candidate_uid = candidate_uid.clone().unwrap().as_str();
+                let candidate_uid = candidate_uid.clone().unwrap();
+                let candidate_uid = candidate_uid.as_str();
 
-                let source = partyCollect.get_source();
-                if let Some(source) = partyCollect.get_source() {
+                if let Some(source) =  partyCollect.get_source() {
                     let source = source.as_str();
                     if candidate_uid == source {
                         //check refinement

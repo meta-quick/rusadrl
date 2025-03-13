@@ -145,7 +145,7 @@ mod test_jsonld {
     use std::fmt::Debug;
 
     use iref::IriBuf;
-    use json_ld::{context_processing::ProcessedRef, object::Any, syntax::{Parse, Value}, Compact, Iri, RemoteDocument, RemoteDocumentReference};
+    use json_ld::{context_processing::ProcessedRef, Compact};
     use reqwest::Proxy;
 
     use crate::linkdata::httploader;
@@ -631,7 +631,6 @@ mod test_jsonld {
 
 #[cfg(test)]
 mod test_sophia {
-    use sophia::api::source::Source;
     use sophia::jsonld::{JsonLdOptions, JsonLdQuadSource};
     use sophia::jsonld::loader::HttpLoader;
     use sophia::jsonld::loader_factory::{DefaultLoaderFactory};
@@ -640,7 +639,6 @@ mod test_sophia {
     fn test_sophia_jsonld() {
         use sophia::jsonld::JsonLdParser;
         use sophia::api::prelude::*;
-        use sophia::inmem::graph::LightGraph;
 
         let example = r#"{
               "@context": "https://json-ld.org/contexts/person.jsonld",
