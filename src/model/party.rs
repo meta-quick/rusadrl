@@ -15,11 +15,13 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+use anyhow::anyhow;
 use iref::IriBuf;
 use lombok::{Getter,Builder,Setter,GetterMut};
 use crate::model::constraint::ConstraintUnion;
 use crate::model::metadata::Metadata;
 use crate::model::stateworld::StateWorld;
+use crate::traits::definions::LogicEval;
 
 #[derive(Debug,Builder,Getter,GetterMut,Setter, Default, Clone)]
 pub struct PartyCollection {
@@ -31,11 +33,16 @@ pub struct PartyCollection {
 #[derive(Debug,Builder,Getter,GetterMut,Setter, Default, Clone)]
 pub struct Party {
     pub uid: Option<IriBuf>,
+    //link to PartCollection
     pub partOf: Vec<IriBuf>,
+    pub refinement: Option<Vec<ConstraintUnion>>,
+    //linked to Policy
     pub assignerOf: Option<IriBuf>,
+    //linked to Policy
     pub assigneeOf: Option<IriBuf>,
     pub metadata: Metadata,
 }
+
 
 impl Party {
     pub fn new() -> Self {
@@ -43,12 +50,148 @@ impl Party {
             uid: None,
             metadata: Metadata::new(),
             partOf: Vec::new(),
+            refinement: None,
             assignerOf: None,
             assigneeOf: None,
         }
     }
+}
 
-    pub fn check(&self, world: &mut StateWorld, party: &Party) -> bool {
-        let iri = party.get_uid().clone();
+pub enum PartyUnion {
+    Party(Party),
+    PartyCollection(PartyCollection),
+}
+
+#[derive(Debug,Default,Clone)]
+pub struct PartyInferencor;
+
+impl PartyInferencor {
+    pub fn infer_party(world: &mut StateWorld, party: PartyUnion,candidate: Party) -> Result<bool, anyhow::Error>{
+        match party {
+            PartyUnion::Party(party) => {
+                let candidate_uid = candidate.get_uid();
+                if let None = candidate {
+                    return Err(anyhow!("Party uid is None"));
+                }
+                let candidate_uid = candidate_uid.clone().unwrap().as_str();
+
+                let self_uid = party.get_uid();
+                if let None = self_uid {
+                    return Err(anyhow!("Party uid is None"));
+                }
+                let self_uid = self_uid.clone().unwrap().as_str();
+
+                if candidate_uid == self_uid {
+                    //check refinement
+                    if let Some(refinement) = party.get_refinement() {
+                        for constraint in refinement {
+                            match constraint {
+                                ConstraintUnion::Constraint(constraint) => {
+                                    let ret = constraint.eval(world);
+                                    match ret {
+                                        Ok(ret) => {
+                                            return Ok(ret);
+                                        },
+                                        Err(_) => {
+                                        }
+                                    }
+                                }
+                                ConstraintUnion::LogicConstraint(ac) => {
+                                    let ret = ac.eval(world);
+                                    match ret {
+                                        Ok(ret) => {
+                                            return Ok(ret);
+                                        },
+                                        Err(_) => {
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        return Ok(true);
+                    }
+                }
+            }
+            PartyUnion::PartyCollection(partyCollect) => {
+                //check if candidate uid equals to partyCollection source
+                let candidate_uid = candidate.get_uid();
+                if let None = candidate_uid {
+                    return Err(anyhow!("Party uid is None"));
+                }
+                let candidate_uid = candidate_uid.clone().unwrap().as_str();
+
+                let source = partyCollect.get_source();
+                if let Some(source) = partyCollect.get_source() {
+                    let source = source.as_str();
+                    if candidate_uid == source {
+                        //check refinement
+                        if let Some(refinement) = partyCollect.get_refinement() {
+                            for constraint in refinement {
+                                match constraint {
+                                    ConstraintUnion::Constraint(constraint) => {
+                                        let ret = constraint.eval(world);
+                                        match ret {
+                                            Ok(ret) => {
+                                                return Ok(ret);
+                                            }
+                                            Err(_) => {}
+                                        }
+                                    }
+                                    ConstraintUnion::LogicConstraint(ac) => {
+                                        let ret = ac.eval(world);
+                                        match ret {
+                                            Ok(ret) => {
+                                                return Ok(ret);
+                                            }
+                                            Err(_) => {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                //else check if is part of the party collection
+                if let Some(source) = partyCollect.get_source() {
+                    let source = source.as_str();
+                    let partOf = candidate.get_partOf();
+                    for part in partOf {
+                        if part.as_str() == source {
+                            //check refinement
+                            if let Some(refinement) = partyCollect.get_refinement() {
+                                for constraint in refinement {
+                                    match constraint {
+                                        ConstraintUnion::Constraint(constraint) => {
+                                            let ret = constraint.eval(world);
+                                            match ret {
+                                                Ok(ret) => {
+                                                    return Ok(ret);
+                                                }
+                                                Err(_) => {}
+                                            }
+                                        }
+                                        ConstraintUnion::LogicConstraint(ac) => {
+                                            let ret = ac.eval(world);
+                                            match ret {
+                                                Ok(ret) => {
+                                                    return Ok(ret);
+                                                }
+                                                Err(_) => {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }else {
+                                return Ok(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
