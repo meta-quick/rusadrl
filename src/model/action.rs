@@ -15,7 +15,7 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Error};
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::conflict_strategy::ConflictStrategy;
 use crate::model::constraint::{ConstraintUnion};
@@ -212,28 +212,32 @@ impl TryFrom<&str> for ActionType {
 #[derive(Debug,Default,Clone)]
 pub struct ActionInferencer;
 impl ActionInferencer {
-   pub fn infer_action(world: &mut StateWorld,strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, action: Action) -> Result<bool, anyhow::Error> {
+   pub fn infer_action(world: &mut StateWorld,strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, candidate: Action) -> Result<bool, anyhow::Error> {
        //check if the action is in the permission list
        let mut permited = false;
+       let mut permitted_action: Option<Action> = None;
        if let Some(perms) = permissions {
            for perm in perms {
                //action type is the same
-               if perm.actionType == action.actionType {
+               if perm.actionType == candidate.actionType {
                    permited = true;
+                   permitted_action = Some(perm.clone());
                    break;
                }
-               if let Some(includes) = action.get_includedIn() {
+               if let Some(includes) = candidate.get_includedIn() {
                    for incl in includes {
                         if incl.actionType == perm.actionType {
                             permited = true;
+                            permitted_action = Some(incl.clone());
                             break;
                         }
                    }
                }
-               if let Some(implies) = action.get_implies() {
+               if let Some(implies) = candidate.get_implies() {
                    for impls in implies {
                        if impls.actionType == perm.actionType {
                            permited = true;
+                           permitted_action = Some(impls.clone());
                            break;
                        }
                    }
@@ -242,26 +246,30 @@ impl ActionInferencer {
        }
 
        let mut prohibed = false;
+       let mut prohibed_action: Option<Action> = None;
        if let Some(prohibitions) = prohibitions {
            for prohibition in prohibitions {
-               if prohibition.actionType == action.actionType {
+               if prohibition.actionType == candidate.actionType {
                    prohibed = true;
+                   prohibed_action = Some(prohibition.clone());
                    break;
                }
 
-               if let Some(includes) = action.get_includedIn() {
+               if let Some(includes) = candidate.get_includedIn() {
                    for incl in includes {
                         if incl.actionType == prohibition.actionType {
                             prohibed = true;
+                            prohibed_action = Some(prohibition.clone());
                             break;
                         }
                    }
                }
 
-               if let Some(implies) = action.get_implies() {
+               if let Some(implies) = candidate.get_implies() {
                    for impls in implies {
                        if impls.actionType == prohibition.actionType {
                            prohibed = true;
+                           prohibed_action = Some(impls.clone());
                            break;
                        }
                    }
@@ -269,44 +277,77 @@ impl ActionInferencer {
            }
        }
 
+       /*
+        * Refinement logic:
+        *  1. Permit refinements should be true
+        *  2. Prohibit refinements should be false
+        */
+
        //check refinements
-       let mut refined = true;
-       if let Some(refinements) = action.get_refinements() {
-           for refinement in refinements {
-                match refinement {
-                    ConstraintUnion::Constraint(constraint) => {
-                        let mut world = world.clone();
-                        let ret = constraint.eval(&mut world);
-                        match ret {
-                            Ok(false) => {
-                               refined = false;
-                            }
-                            _ => {
-                            }
-                        }
-                    }
-                    ConstraintUnion::LogicConstraint(constraint) => {
-                        let mut world = world.clone();
-                        let ret = constraint.eval(&mut world);
-                        match ret {
-                            Ok(false) => {
-                                refined = false;
-                            }
-                            _ => {
-                            }
-                        }
-                    }
-                }
+       let mut permit_refined = true;
+       if let Some(perm) = permitted_action {
+           if let Some(constraints) = perm.get_refinements() {
+               for constraint in constraints {
+                   match constraint {
+                       ConstraintUnion::Constraint(constraint) => {
+                           let result = constraint.eval(world);
+                           match result {
+                               Ok(false) => {
+                                   permit_refined = false;
+                               }
+                               _ => {}
+                           }
+                       }
+                       ConstraintUnion::LogicConstraint(ac) => {
+                           let result = ac.eval(world);
+                           match result {
+                               Ok(false) => {
+                                   permit_refined = false;
+                               }
+                               _ => {}
+                           }
+                       }
+                   }
+               }
            }
        }
 
-       //in permission and no in prohibition and refinement is true
-       if permited && !prohibed && refined {
+       let mut prohibit_refined = false;
+       if let Some(prohibit) = prohibed_action {
+           if let Some(constraints) = prohibit.get_refinements() {
+               for constraint in constraints {
+                   match constraint {
+                       ConstraintUnion::Constraint(constraint) => {
+                           let result = constraint.eval(world);
+                           match result {
+                               Ok(true) => {
+                                   prohibit_refined = true;
+                               }
+                               _ => {}
+                           }
+                       }
+                       ConstraintUnion::LogicConstraint(ac) => {
+                           let result = ac.eval(world);
+                           match result {
+                               Ok(false) => {
+                                   prohibit_refined = true;
+                               }
+                               _ => {}
+                           }
+                       }
+                   }
+               }
+           }
+       }
+
+       //in permission and no in prohibition and permission refinement is true
+       if (permited && permit_refined && !prohibed ) ||
+           ( permited && permit_refined && prohibed && !prohibit_refined )  {
            return Ok(true);
        }
 
        //in permission and in prohibition and refinement is true
-       if permited && prohibed && refined {
+       if permited && permit_refined && prohibed && prohibit_refined {
            match strategy {
                ConflictStrategy::perm => {
                    return Ok(true);
@@ -320,8 +361,8 @@ impl ActionInferencer {
            }
        }
 
-       //refinement is false
-       if !refined {
+       //permission refinement is false
+       if !permit_refined {
            return Ok(false);
        }
 
