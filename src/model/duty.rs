@@ -23,7 +23,6 @@ use super::rule::Rule;
 #[derive(Debug,Default,Builder,Getter,GetterMut,Setter, Clone)]
 pub struct Duty {
     pub rule: Rule,
-    // pub consequence: IriBuf,
 }
 
 impl Duty {

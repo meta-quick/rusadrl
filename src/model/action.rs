@@ -15,7 +15,7 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow};
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::conflict_strategy::ConflictStrategy;
 use crate::model::constraint::{ConstraintUnion};

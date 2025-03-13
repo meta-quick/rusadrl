@@ -14,10 +14,11 @@
 
 #![allow(dead_code)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
-use crate::model::action::Action;
+use crate::model::action::{Action, ActionInferencer};
 use crate::model::asset::Asset;
 use crate::model::conflict_strategy::ConflictStrategy;
 use crate::model::constraint::Constraint;
@@ -26,9 +27,11 @@ use crate::model::metadata::Metadata;
 use crate::traits::traits::Validate;
 
 use crate::model::error::OdrlError;
+use crate::model::eval::Evaluator;
 use crate::model::party::Party;
 use crate::model::permission::Permission;
 use crate::model::prohibition::Prohibition;
+use crate::model::stateworld::StateWorld;
 
 //Identifier:	http://www.w3.org/ns/odrl/2/Policy
 #[derive(Debug,Default,Builder,Setter,Getter,GetterMut,Clone)]
@@ -50,7 +53,6 @@ pub struct Policy {
     pub relation: Option<Vec<IriBuf>>,
     pub function: Option<Vec<IriBuf>>,
 
-    //Meta
     pub metadata: Option<Metadata>,
 }
 
@@ -236,6 +238,103 @@ pub struct Ticket {
     pub policy: Policy,
 }
 
-#[cfg(test)]
-mod tests {
+
+pub enum PolicyUnion {
+    Agreement(Agreement),
+    Offer(Offer),
+    Set(Set),
+    Privacy(Privacy),
+    Request(Request),
+    Assert(Assert),
+    Ticket(Ticket),
+}
+
+#[derive(Debug,Default,Builder,Setter,Getter,GetterMut,Clone)]
+pub struct OdrlRequest{
+    pub action: Option<IriBuf>,
+    pub assignee: Option<IriBuf>,
+    pub assigner: Option<IriBuf>,
+    pub target: Option<Asset>,
+}
+
+impl Evaluator for Agreement  {
+    fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+       let policy = &self.policy;
+
+       /*
+        *
+        */
+       let action_inference = ActionInferencer::default();
+
+       Ok(true)
+    }
+}
+
+impl Evaluator for Offer {
+    fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+        Ok(true)
+    }
+}
+
+impl Evaluator for Set {
+    fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+        Ok(true)
+    }
+}
+
+impl Evaluator for Privacy {
+    fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+        Ok(true)
+    }
+}
+
+impl Evaluator for Request {
+    fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+        Ok(true)
+    }
+}
+
+impl Evaluator for Assert {
+    fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+        Ok(true)
+    }
+}
+
+impl Evaluator for Ticket {
+    fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+        Ok(true)
+    }
+}
+
+
+
+
+pub struct PolicyEngine;
+
+impl PolicyEngine {
+    pub fn eval(world: &mut StateWorld, policy: PolicyUnion,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+        match policy {
+            PolicyUnion::Privacy(p) => {
+                return  p.eval(world,req);
+            }
+            PolicyUnion::Request(r) => {
+                return  r.eval(world,req);
+            }
+            PolicyUnion::Assert(a) => {
+                return  a.eval(world,req);
+            }
+            PolicyUnion::Set(s) => {
+                return  s.eval(world,req);
+            }
+            PolicyUnion::Agreement(p) => {
+                return  p.eval(world,req);
+            }
+            PolicyUnion::Offer(o) => {
+                return  o.eval(world,req);
+            }
+            PolicyUnion::Ticket(s) => {
+                return  s.eval(world,req);
+            }
+        }
+    }
 }
