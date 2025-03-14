@@ -18,17 +18,14 @@
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
-use crate::model::action::{Action, ActionInferencer};
+use crate::model::action::{Action, ActionInferencer, ActionType};
 use crate::model::asset::Asset;
 use crate::model::conflict_strategy::ConflictStrategy;
 use crate::model::constraint::Constraint;
 use crate::model::duty::Duty;
 use crate::model::metadata::Metadata;
-use crate::traits::traits::Validate;
-
-use crate::model::error::OdrlError;
 use crate::model::eval::Evaluator;
-use crate::model::party::Party;
+use crate::model::party::{Party, PartyInferencer, PartyUnion};
 use crate::model::permission::Permission;
 use crate::model::prohibition::Prohibition;
 use crate::model::stateworld::StateWorld;
@@ -56,150 +53,16 @@ pub struct Policy {
     pub metadata: Option<Metadata>,
 }
 
-impl Validate for Policy {
-    fn validate(& mut self) -> Result<(), OdrlError> {
-        //verify if uid is valid
-        if self.uid.is_none() {
-            return Err(OdrlError::InvalidIri);
-        }
-
-        let permission = self.get_permission();
-        let prohibition = self.get_prohibition();
-        let obligation = self.get_obligation();
-        if permission.is_none() && prohibition.is_none() && obligation.is_none() {
-            return Err(OdrlError::InvalidRuleDefinition);
-        }
-        //check conflict
-        let conflict = self.get_conflict();
-        if conflict.is_none() {
-            self.set_conflict(Some(perm));
-        }
-
-        Ok(())
-    }
-}
-
 impl Policy {
     pub fn new() -> Self {
        Self::default()
     }
 }
 
-
 //http://www.w3.org/ns/odrl/2/Agreement
 #[derive(Debug,Default,Builder,Getter,GetterMut, Clone)]
 pub struct Agreement {
     pub policy: Policy,
-}
-
-impl Validate for Agreement {
-    fn validate(&mut self) -> Result<(), OdrlError> {
-         /*
-          *  {
-          *       "@context": "http://www.w3.org/ns/odrl.jsonld",
-          *       "@type": "Agreement",
-          *       "uid": "http://example.com/policy:1012",
-          *       "profile": "http://example.com/odrl:profile:01",
-          *       "permission": [{
-          *           "target": "http://example.com/asset:9898.movie",
-          *           "assigner": "http://example.com/party:org:abc",
-          *           "assignee": "http://example.com/party:person:billie",
-          *           "action": "play"
-          *       }]
-          *   }
-          */
-          let result = self.policy.validate();
-          if result.is_err() {
-              return result;
-          }
-
-          let common_assignee = self.policy.get_assignee().clone();
-          let common_assigner = self.policy.get_assigner().clone();
-          let common_target = self.policy.get_target().clone();
-
-          let permissions = self.policy.get_permission_mut();
-          let mut has_permission = false;
-          if permissions.is_some() {
-             //check if permission has assignee, assigner, target
-             for permission in permissions.as_mut().unwrap() {
-                 if permission.get_assignee().is_none() {
-                     if common_assignee.is_none() {
-                         return Err(OdrlError::MissingAgreementAssignee);
-                     }
-                     permission.set_assignee(common_assignee.clone());
-                 }
-
-                 if permission.get_assigner().is_none() {
-                     if common_assigner.is_none() {
-                         return Err(OdrlError::MissingAgreementAssigner);
-                     }
-                     permission.set_assigner(common_assigner.clone());
-                 }
-
-                 if permission.get_target().is_none() {
-                     if common_target.is_none() {
-                         return Err(OdrlError::MissingAgreementTarget);
-                     }
-                     permission.set_target(common_target.clone());
-                 }
-
-                 has_permission = true;
-             }
-         }
-
-         let mut has_obligation = false;
-         let obligations = self.policy.get_obligation_mut();
-         if obligations.is_some() {
-             for mut obligation in obligations.as_mut().unwrap() {
-                 if obligation.get_assignee().is_none() {
-                     if common_assignee.is_none() {
-                         return Err(OdrlError::MissingAgreementAssignee);
-                     }
-                     obligation.set_assignee(common_assignee.clone());
-                 }
-                 if obligation.get_assigner().is_none() {
-                     if common_assigner.is_none() {
-                         return Err(OdrlError::MissingAgreementAssigner);
-                     }
-                     obligation.set_assigner(common_assigner.clone());
-                 }
-                 if obligation.get_target().is_none() {
-                     if common_target.is_none() {
-                         return Err(OdrlError::MissingAgreementTarget);
-                     }
-                     obligation.set_target(common_target.clone());
-                 }
-                 has_obligation = true;
-             }
-         }
-
-         let mut has_prohibition = false;
-        let prohibitions = self.policy.get_prohibition_mut();
-         if prohibitions.is_some() {
-            for mut prohibition in prohibitions.as_mut().unwrap() {
-                if prohibition.get_assignee().is_none() {
-                    if common_assignee.is_none() {
-                        return Err(OdrlError::MissingAgreementAssignee);
-                    }
-                    prohibition.set_assignee(common_assignee.clone());
-                }
-                if prohibition.get_assigner().is_none() {
-                    if common_assigner.is_none() {
-                        return Err(OdrlError::MissingAgreementAssigner);
-                    }
-                    prohibition.set_assigner(common_assigner.clone());
-                }
-                if prohibition.get_target().is_none() {
-                    if common_target.is_none() {
-                        return Err(OdrlError::MissingAgreementTarget);
-                    }
-                    prohibition.set_target(common_target.clone());
-                }
-                has_prohibition = true;
-            }
-         }
-         Ok(())
-    }
 }
 
 //http://www.w3.org/ns/odrl/2/Offer
@@ -239,6 +102,7 @@ pub struct Ticket {
 }
 
 
+#[derive(Debug, Clone)]
 pub enum PolicyUnion {
     Agreement(Agreement),
     Offer(Offer),
@@ -249,13 +113,50 @@ pub enum PolicyUnion {
     Ticket(Ticket),
 }
 
-#[derive(Debug,Default,Builder,Setter,Getter,GetterMut,Clone)]
+#[derive(Debug,Default,Builder,Clone)]
 pub struct OdrlRequest{
     pub action: Option<IriBuf>,
     pub assignee: Option<IriBuf>,
     pub assigner: Option<IriBuf>,
-    pub target: Option<Asset>,
+    pub target: Option<IriBuf>,
 }
+
+impl OdrlRequest {
+    pub fn get_assignee(&self) -> Option<Party> {
+        if self.assignee.is_some() {
+            Some(Party::builder().uid(self.assignee.clone()).build())
+        } else {
+            None
+        }
+    }
+    pub fn get_assigner(&self) -> Option<Party> {
+        if self.assigner.is_some() {
+            Some(Party::builder().uid(self.assigner.clone()).build())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_action(&self) -> Option<Action> {
+        if self.action.is_some() {
+            let ty = self.action.clone().unwrap();
+            let ty = ty.as_str();
+            let action = Action::builder().actionType(ActionType::try_from(ty).unwrap()).build();
+            Some(action)
+        }else {
+            None
+        }
+    }
+
+    pub fn get_target(&self) -> Option<Asset> {
+        if self.target.is_some() {
+            Some(Asset::builder().uid(self.target.clone()).build())
+        }else {
+            None
+        }
+    }
+}
+
 
 impl Evaluator for Agreement  {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
@@ -275,11 +176,77 @@ impl Evaluator for Agreement  {
        if permissions.is_none() {
           return Ok(false);
        }
+       let prohibitions = policy.get_prohibition();
+
+       /*
+        * 1. Check Assigner and Assignee match in each permission
+        * 2. Check Target match in each permission
+        * 3. Check Action match in each permission
+        * 4. Check Constraint match in each permission
+        * 5. Check Obligation match in each permission
+        * 6. Check Above match in each prohibition
+        * 7. Check Conflict Strategy
+        */
+        let candidate_assignee = req.get_assignee();
+        let candidate_assigner = req.get_assigner();
+        let candidate_action = req.get_action();
+
+        if let Some(permissions) = permissions {
+            for permission in permissions {
+                let assignee = permission.get_assignee();
+                if let Some(assignee) = assignee {
+                    let candidate_assignee = candidate_assignee.clone();
+                    let policy_assignee = permission.get_assignee().clone();
+
+                    //do assignee verification
+                    let mut assignee_verified = false;
+                    if candidate_assignee.is_some() && policy_assignee.is_some() {
+                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                        if let Ok(ret) = ret {
+                            assignee_verified = ret;
+                        }
+                    }
+
+                    let candidate_assigner = candidate_assigner.clone();
+                    let policy_assigner = permission.get_assigner().clone();
+
+                    //do assigner verification
+                    let assigner_verified = false;
+                    let assigner = permission.get_assigner();
+                    if candidate_assigner.is_some() && assigner.is_some() {
+                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                        if let Ok(ret) = ret {
+                            assignee_verified = ret;
+                        }
+                    }
+
+                    //do action verification
+                    let candidate_action = candidate_action.clone();
+                    let policy_action = permission.get_action().clone();
+
+                    ActionInferencer::infer_action(world,conflict,&policy_action,&candidate_action);
+                }
 
 
-       //check deny prohibitions
-       let permissions = policy.get_prohibition();
+                let assigner = permission.get_assigner();
+                let target = permission.get_target();
+            }
+        }
 
+
+       //handle inheritFrom
+       let inhirts = policy.get_inheritFrom();
+       //TODO: do loop inheritFrom check
+       if let Some(inherits) = inhirts {
+           for inherit in inherits {
+               let inherit_policy = world.get_policy(inherit.to_string());
+               if let Some(inherit_policy) = inherit_policy {
+                   let result = PolicyEngine::eval(world,inherit_policy,req);
+               }
+           }
+       }
 
        Ok(true)
     }

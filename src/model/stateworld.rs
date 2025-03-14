@@ -23,7 +23,7 @@ use iref::IriBuf;
 use lombok::{Builder};
 use crate::model::asset::{AssetCollection};
 use crate::model::constraint_right_operand::ConstraintRightOperand;
-use crate::model::policy::Policy;
+use crate::model::policy::{Policy, PolicyUnion};
 
 #[derive(Debug,Default,Builder,Clone)]
 pub struct StateWorld {
@@ -33,7 +33,7 @@ pub struct StateWorld {
     pub last_executeTime: i64,
     pub operand_referred: HashMap<String,ConstraintRightOperand>,
     pub assets: HashMap<String, AssetCollection>,
-    pub global_policies: HashMap<String, Policy>,
+    pub global_policies: HashMap<String, PolicyUnion>,
 }
 
 impl StateWorld {
@@ -93,11 +93,11 @@ impl StateWorld {
         self.assets.insert(iri.to_string(), assets);
     }
 
-    pub fn get_policy(&self,iri: String) -> Option<Policy> {
+    pub fn get_policy(&self,iri: String) -> Option<PolicyUnion> {
         self.global_policies.get(&iri).cloned()
     }
 
-    pub fn add_policy(&mut self,iri: String,policy: Policy) {
+    pub fn add_policy(&mut self,iri: String,policy: PolicyUnion) {
         self.global_policies.insert(iri.to_string(), policy);
     }
 }

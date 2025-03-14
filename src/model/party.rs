@@ -66,7 +66,7 @@ pub enum PartyUnion {
 pub struct PartyInferencer;
 
 impl PartyInferencer {
-    pub fn infer_party(world: &mut StateWorld, party: PartyUnion,candidate: Party) -> Result<bool, anyhow::Error>{
+    pub fn infer_party(world: &mut StateWorld, party: &PartyUnion,candidate: &Party) -> Result<bool, anyhow::Error>{
         match party {
             PartyUnion::Party(party) => {
                 let candidate_uid = candidate.get_uid();

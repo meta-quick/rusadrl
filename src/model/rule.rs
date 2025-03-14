@@ -22,6 +22,7 @@ use crate::model::action::Action;
 use crate::model::asset::Asset;
 use crate::model::constraint::{ConstraintUnion};
 use crate::model::party::Party;
+use crate::model::policy::OdrlRequest;
 use crate::model::stateworld::StateWorld;
 use crate::traits::definions::LogicEval;
 
@@ -44,8 +45,9 @@ pub struct Rule {
 pub struct RuleInference;
 
 impl RuleInference {
-    pub fn infer(candidate: Rule, world: &StateWorld) -> Result<bool,anyhow::Error> {
+    pub fn infer(world: &StateWorld, candidate: Rule, req: &OdrlRequest) -> Result<bool,anyhow::Error> {
         let mut result = true;
+
         if let Some(constraints ) = &candidate.get_constraint() {
             for constraint in constraints {
                 match constraint {
