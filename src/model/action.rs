@@ -15,9 +15,7 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
-use anyhow::{anyhow};
 use lombok::{Builder, Getter, GetterMut, Setter};
-use crate::model::conflict_strategy::ConflictStrategy;
 use crate::model::constraint::{ConstraintUnion};
 use crate::model::metadata::Metadata;
 use crate::model::stateworld::StateWorld;
@@ -212,32 +210,34 @@ impl TryFrom<&str> for ActionType {
 #[derive(Debug,Default,Clone)]
 pub struct ActionInferencer;
 impl ActionInferencer {
-   pub fn infer_action(world: &mut StateWorld,strategy: ConflictStrategy,permissions: Option<Vec<Action>>, prohibitions: Option<Vec<Action>>, candidate: Action) -> Result<bool, anyhow::Error> {
-       //check if the action is in the permission list
-       let mut permited = false;
-       let mut permitted_action: Option<Action> = None;
-       if let Some(perms) = permissions {
-           for perm in perms {
-               //action type is the same
-               if perm.actionType == candidate.actionType {
-                   permited = true;
-                   permitted_action = Some(perm.clone());
-                   break;
-               }
-               if let Some(includes) = candidate.get_includedIn() {
-                   for incl in includes {
-                        if incl.actionType == perm.actionType {
-                            permited = true;
-                            permitted_action = Some(incl.clone());
-                            break;
-                        }
+   pub fn infer(world: &mut StateWorld, action: Action,candidate: Action) -> Result<bool, anyhow::Error> {
+       let mut permitted = false;
+
+
+       if action.actionType == candidate.actionType {
+           permitted = true;
+       } else {
+           /* check includedIn
+            * if candidate parent is the same as action, then it is permitted
+            * ex: candidate includedIn is 'use', and action is 'use' also, and 'use' granted/prohibited, then match
+            */
+           if let Some(includedIn) = candidate.get_includedIn() {
+               for included in includedIn {
+                   if included.actionType == action.actionType  {
+                       permitted = true;
+                       break;
                    }
                }
-               if let Some(implies) = candidate.get_implies() {
-                   for impls in implies {
-                       if impls.actionType == perm.actionType {
-                           permited = true;
-                           permitted_action = Some(impls.clone());
+           }
+
+           if !permitted {
+               /* check implies
+                * if candidate is in implies of the action, then it is permitted
+                */
+               if let Some(impls) = action.get_implies() {
+                   for impls in impls {
+                       if impls.actionType == candidate.actionType {
+                           permitted = true;
                            break;
                        }
                    }
@@ -245,127 +245,40 @@ impl ActionInferencer {
            }
        }
 
-       let mut prohibed = false;
-       let mut prohibed_action: Option<Action> = None;
-       if let Some(prohibitions) = prohibitions {
-           for prohibition in prohibitions {
-               if prohibition.actionType == candidate.actionType {
-                   prohibed = true;
-                   prohibed_action = Some(prohibition.clone());
-                   break;
-               }
-
-               if let Some(includes) = candidate.get_includedIn() {
-                   for incl in includes {
-                        if incl.actionType == prohibition.actionType {
-                            prohibed = true;
-                            prohibed_action = Some(prohibition.clone());
-                            break;
-                        }
-                   }
-               }
-
-               if let Some(implies) = candidate.get_implies() {
-                   for impls in implies {
-                       if impls.actionType == prohibition.actionType {
-                           prohibed = true;
-                           prohibed_action = Some(impls.clone());
-                           break;
-                       }
-                   }
-               }
-           }
-       }
-
-       /*
-        * Refinement logic:
-        *  1. Permit refinements should be true
-        *  2. Prohibit refinements should be false
-        */
-
-       //check refinements
-       let mut permit_refined = true;
-       if let Some(perm) = permitted_action {
-           if let Some(constraints) = perm.get_refinements() {
-               for constraint in constraints {
-                   match constraint {
-                       ConstraintUnion::Constraint(constraint) => {
-                           let result = constraint.eval(world);
-                           match result {
-                               Ok(false) => {
-                                   permit_refined = false;
-                               }
-                               _ => {}
-                           }
-                       }
-                       ConstraintUnion::LogicConstraint(ac) => {
-                           let result = ac.eval(world);
-                           match result {
-                               Ok(false) => {
-                                   permit_refined = false;
-                               }
-                               _ => {}
-                           }
-                       }
-                   }
-               }
-           }
-       }
-
-       let mut prohibit_refined = false;
-       if let Some(prohibit) = prohibed_action {
-           if let Some(constraints) = prohibit.get_refinements() {
-               for constraint in constraints {
-                   match constraint {
-                       ConstraintUnion::Constraint(constraint) => {
-                           let result = constraint.eval(world);
-                           match result {
-                               Ok(true) => {
-                                   prohibit_refined = true;
-                               }
-                               _ => {}
-                           }
-                       }
-                       ConstraintUnion::LogicConstraint(ac) => {
-                           let result = ac.eval(world);
-                           match result {
-                               Ok(false) => {
-                                   prohibit_refined = true;
-                               }
-                               _ => {}
-                           }
-                       }
-                   }
-               }
-           }
-       }
-
-       //in permission and no in prohibition and permission refinement is true
-       if (permited && permit_refined && !prohibed ) ||
-           ( permited && permit_refined && prohibed && !prohibit_refined )  {
-           return Ok(true);
-       }
-
-       //in permission and in prohibition and refinement is true
-       if permited && permit_refined && prohibed && prohibit_refined {
-           match strategy {
-               ConflictStrategy::perm => {
-                   return Ok(true);
-               },
-               ConflictStrategy::prohibit => {
-                   return Ok(false);
-               },
-               ConflictStrategy::invalid => {
-                   return Err(anyhow!("Invalid action"));
-               }
-           }
-       }
-
-       //permission refinement is false
-       if !permit_refined {
+       if !permitted {
            return Ok(false);
        }
 
-       return Err(anyhow!("Invalid action"));
+       //check refinement
+       let mut refined = true;
+       if let Some(refinement) = action.get_refinements() {
+           for refinement in refinement {
+               match refinement {
+                   ConstraintUnion::Constraint(constraint) => {
+                       let result = constraint.eval(world);
+                       match result {
+                           Ok(false) => {
+                               refined = false;
+                           },
+                           _ => {
+                           }
+                       }
+                   }
+                   ConstraintUnion::LogicConstraint(ac) => {
+                       let result = ac.eval(world);
+                       match result {
+                           Ok(false) => {
+                               refined = false;
+                           },
+                           _ => {
+                           }
+                       }
+                   }
+               }
+           }
+       }
+
+       //action match already, just check refinement
+       Ok(refined)
    }
 }

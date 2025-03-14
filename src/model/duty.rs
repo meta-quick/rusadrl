@@ -16,7 +16,7 @@
 #![warn(non_snake_case)]
 
 use lombok::{Builder, Getter, GetterMut, Setter};
-use crate::model::asset::Asset;
+use crate::model::asset::{AssetUnion};
 use crate::model::party::Party;
 use super::rule::Rule;
 
@@ -42,11 +42,7 @@ impl Duty {
         self.rule.get_assigner()
     }
 
-    pub fn set_target(&mut self, target: Option<Asset>) {
-        self.rule.set_target(target);
-    }
-
-    pub fn get_target(&self) -> &Option<Asset> {
+    pub fn get_target(&self) -> &Option<AssetUnion> {
         self.rule.get_target()
     }
 }

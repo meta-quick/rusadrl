@@ -44,6 +44,7 @@ pub struct Asset {
     pub metadata: Option<Metadata>,
 }
 
+#[derive(Debug,Clone)]
 pub enum AssetUnion {
     Asset(Asset),
     AssetCollection(AssetCollection),
@@ -51,7 +52,7 @@ pub enum AssetUnion {
 
 pub struct AssetInferencer;
 impl AssetInferencer {
-    pub fn infer_asset(world: &mut StateWorld, asset: AssetUnion,candidate: Asset) -> Result<bool, anyhow::Error>{
+    pub fn infer(world: &mut StateWorld, asset: AssetUnion,candidate: Asset) -> Result<bool, anyhow::Error>{
         match asset {
             AssetUnion::Asset(asset) => {
                 //Only need to check uid and partOf

@@ -16,7 +16,9 @@
 #![warn(non_snake_case)]
 
 use lombok::{Builder,Setter,GetterMut,Getter};
-use crate::model::asset::Asset;
+use crate::model::action::Action;
+use crate::model::asset::{AssetUnion};
+use crate::model::constraint::ConstraintUnion;
 use crate::model::duty::Duty;
 use crate::model::party::Party;
 use crate::model::rule::Rule;
@@ -46,11 +48,15 @@ impl Prohibition {
         self.rule.get_assigner()
     }
 
-    pub fn set_target(&mut self, target: Option<Asset>) {
-        self.rule.set_target(target);
+    pub fn get_target(&self) -> &Option<AssetUnion> {
+        self.rule.get_target()
     }
 
-    pub fn get_target(&self) -> &Option<Asset> {
-        self.rule.get_target()
+    pub fn get_action(&self) -> &Option<Action> {
+        self.rule.get_action()
+    }
+
+    pub fn get_constraint(&self) -> &Option<Vec<ConstraintUnion>> {
+        self.rule.get_constraint()
     }
 }

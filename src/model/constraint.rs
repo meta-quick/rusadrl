@@ -208,6 +208,50 @@ pub enum ConstraintUnion {
     LogicConstraint(LogicConstraint),
 }
 
+
+pub struct ConstraintInference;
+
+impl ConstraintInference {
+    pub fn infer(world: &StateWorld, constraints: &Vec<ConstraintUnion>) -> Result<bool,anyhow::Error> {
+        let mut result = true;
+        for constraint in constraints {
+            let ret =  ConstraintInference::infer_one(world, constraint);
+            match ret {
+                Ok(false) => { result = false; },
+                _ => {
+                }
+            }
+        }
+
+        Ok(result)
+    }
+    pub fn infer_one(world: &StateWorld, constraint: &ConstraintUnion) -> Result<bool,anyhow::Error> {
+        let mut result = true;
+        match constraint {
+            ConstraintUnion::Constraint(c) => {
+                let mut world = world.clone();
+                let ret = c.eval(&mut world);
+                match ret {
+                    Ok(false) => { result = false; },
+                    _ => {
+                    }
+                }
+            }
+            ConstraintUnion::LogicConstraint(lc) => {
+                let mut world = world.clone();
+                let ret = lc.eval(&mut world);
+                match ret {
+                    Ok(false) => { result = false; },
+                    _ => {
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::model::constraint_right_operand::RightOperandType;

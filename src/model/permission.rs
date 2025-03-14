@@ -17,7 +17,8 @@
 
 use lombok::{Builder,Setter,GetterMut,Getter};
 use crate::model::action::Action;
-use crate::model::asset::Asset;
+use crate::model::asset::{AssetUnion};
+use crate::model::constraint::{ConstraintUnion};
 use crate::model::party::Party;
 use crate::model::rule::Rule;
 
@@ -45,12 +46,12 @@ impl Permission {
         self.duty.get_assigner()
     }
 
-    pub fn set_target(&mut self, target: Option<Asset>) {
-        self.duty.set_target(target);
+    pub fn get_target(&self) -> &Option<AssetUnion> {
+        self.duty.get_target()
     }
 
-    pub fn get_target(&self) -> &Option<Asset> {
-        self.duty.get_target()
+    pub fn get_constraint(&self) -> &Option<Vec<ConstraintUnion>> {
+        self.duty.get_constraint()
     }
 
     pub fn get_action(&self) -> &Option<Action> {

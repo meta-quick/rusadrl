@@ -23,7 +23,7 @@ use iref::IriBuf;
 use lombok::{Builder};
 use crate::model::asset::{AssetCollection};
 use crate::model::constraint_right_operand::ConstraintRightOperand;
-use crate::model::policy::{Policy, PolicyUnion};
+use crate::model::policy::{PolicyUnion};
 
 #[derive(Debug,Default,Builder,Clone)]
 pub struct StateWorld {
