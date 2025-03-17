@@ -261,6 +261,8 @@ impl Evaluator for Agreement  {
                     if let Ok(true) = ret {
                         constraint_verified = true;
                     }
+                } else {
+                    constraint_verified = true;
                 }
 
                 if constraint_verified {
@@ -344,7 +346,10 @@ impl Evaluator for Agreement  {
                        if let Ok(true) = ret {
                            constraint_verified = true;
                        }
+                   } else {
+                       constraint_verified = true;
                    }
+
                    if constraint_verified {
                        prohibited = true;
                        break;
@@ -387,37 +392,1406 @@ impl Evaluator for Agreement  {
 
 impl Evaluator for Offer {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
-        Ok(true)
+        let policy = &self.policy;
+        let mut conflict = policy.get_conflict().clone();
+        if conflict.is_none() {
+            conflict = Some(ConflictStrategy::perm);
+        }
+        let conflict = conflict.unwrap();
+
+        let candidate = req.get_action().clone();
+        if candidate.is_none() {
+            return Ok(false);
+        }
+
+        //check allow permissions
+        let permissions = policy.get_permission();
+        if permissions.is_none() {
+            return Ok(false);
+        }
+        let prohibitions = policy.get_prohibition();
+
+        /*
+         * 1. Check Assigner and Assignee match in each permission
+         * 2. Check Target match in each permission
+         * 3. Check Action match in each permission
+         * 4. Check Constraint match in each permission
+         * 5. Check Obligation match in each permission
+         * 6. Check Above match in each prohibition
+         * 7. Check Conflict Strategy
+         */
+        let candidate_assignee = req.get_assignee();
+        let candidate_assigner = req.get_assigner();
+        let candidate_action = req.get_action();
+
+        let mut permitted = false;
+        if let Some(permissions) = permissions {
+            for permission in permissions {
+                // Note: No need to check assignee and assigner here, because offer is not for specific assignee
+                // let candidate_assignee = candidate_assignee.clone();
+                // let policy_assignee = permission.get_assignee().clone();
+                // let mut assignee_verified = false;
+                // if candidate_assignee.is_some() && policy_assignee.is_some() {
+                //     let union = PartyUnion::Party(policy_assignee.unwrap());
+                //     let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                //     if let Ok(true) = ret {
+                //         assignee_verified = true;
+                //     }
+                // }
+                // if !assignee_verified {
+                //     //no need to check other parts, must have exact one assignee
+                //     continue;
+                // }
+
+                //do assigner verification
+                let candidate_assigner = candidate_assigner.clone();
+                let policy_assigner = permission.get_assigner().clone();
+                let mut assigner_verified = false;
+                let assigner = permission.get_assigner();
+                if candidate_assigner.is_some() && assigner.is_some() {
+                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                    if let Ok(true) = ret {
+                        assigner_verified = true;
+                    }
+                }
+                if !assigner_verified {
+                    //no need to check other parts, must have exact one assigner
+                    continue;
+                }
+
+                //do action verification
+                let candidate_action = candidate_action.clone().unwrap();
+                let policy_action = permission.get_action().clone().unwrap();
+                let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                let mut action_verified = false;
+                if let Ok(true) = result {
+                    action_verified = true;
+                }
+                if !action_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //do target verification
+                let candidate_target = req.get_target().clone().unwrap();
+                let policy_target = permission.get_target().clone().unwrap();
+                let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                let mut target_verified = false;
+                if let Ok(true) = result {
+                    target_verified = true;
+                }
+                if !target_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //check constraint
+                let policy_constraint = permission.get_constraint();
+                let mut constraint_verified = false;
+                if let Some(constraint) = policy_constraint {
+                    let ret = ConstraintInference::infer(world,constraint);
+                    if let Ok(true) = ret {
+                        constraint_verified = true;
+                    }
+                } else {
+                    constraint_verified = true;
+                }
+
+                if constraint_verified {
+                    //every thing ok here, a permission is matched already
+                    permitted = true;
+                    break;
+                }
+            }
+        }
+
+        //check prohibition
+        if permitted {
+            let mut prohibited = false;
+            if let Some(prohibits) = prohibitions {
+                for prohibit in prohibits {
+                    let candidate_assignee = candidate_assignee.clone();
+                    let policy_assignee = prohibit.get_assignee().clone();
+
+                    //do assignee verification
+                    let mut assignee_verified = false;
+                    if candidate_assignee.is_some() && policy_assignee.is_some() {
+                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                        if let Ok(true) = ret {
+                            assignee_verified = true;
+                        }
+                    }
+                    if !assignee_verified {
+                        //no need to check other parts, must have exact one assignee
+                        continue;
+                    }
+
+                    //do assigner verification
+                    let candidate_assigner = candidate_assigner.clone();
+                    let policy_assigner = prohibit.get_assigner().clone();
+                    let mut assigner_verified = false;
+                    let assigner = prohibit.get_assigner();
+                    if candidate_assigner.is_some() && assigner.is_some() {
+                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                        if let Ok(true) = ret {
+                            assigner_verified = true;
+                        }
+                    }
+                    if !assigner_verified {
+                        //no need to check other parts, must have exact one assigner
+                        continue;
+                    }
+
+                    //do action verification
+                    let candidate_action = candidate_action.clone().unwrap();
+                    let policy_action = prohibit.get_action().clone().unwrap();
+                    let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                    let mut action_verified = false;
+                    if let Ok(true) = result {
+                        action_verified = true;
+                    }
+
+                    if !action_verified {
+                        //no need to check other parts, must have exact one action
+                        continue;
+                    }
+
+                    //do target verification
+                    let candidate_target = req.get_target().clone().unwrap();
+                    let policy_target = prohibit.get_target().clone().unwrap();
+                    let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                    let mut target_verified = false;
+                    if let Ok(true) = result {
+                        target_verified = true;
+                    }
+                    if !target_verified {
+                        continue;
+                    }
+
+                    //check constraint
+                    let policy_constraint = prohibit.get_constraint();
+                    let mut constraint_verified = false;
+                    if let Some(constraint) = policy_constraint {
+                        let ret = ConstraintInference::infer(world,constraint);
+                        if let Ok(true) = ret {
+                            constraint_verified = true;
+                        }
+                    } else {
+                        constraint_verified = true;
+                    }
+
+                    if constraint_verified {
+                        prohibited = true;
+                        break;
+                    }
+                }
+            }
+            if prohibited {
+                //already permitted, need to check conflict strategy
+                return match conflict {
+                    ConflictStrategy::perm => {
+                        Ok(true)
+                    }
+                    ConflictStrategy::prohibit => {
+                        Ok(false)
+                    }
+                    ConflictStrategy::invalid => {
+                        Ok(false)
+                    }
+                }
+            }
+            return Ok(true);
+        }
+
+        //here not matched any permission at this level, need to check inheritFrom
+        let inheritFrom = policy.get_inheritFrom().clone();
+        let inheritFrom = inheritFrom.unwrap();
+        for inherit in inheritFrom {
+            let inherit_policy = world.get_policy(inherit.to_string());
+            if let Some(inherit_policy) = inherit_policy {
+                let result = PolicyEngine::eval(world,inherit_policy,req);
+                if let Ok(true) = result {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
 
 impl Evaluator for Set {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
-        Ok(true)
+        let policy = &self.policy;
+        let mut conflict = policy.get_conflict().clone();
+        if conflict.is_none() {
+            conflict = Some(ConflictStrategy::perm);
+        }
+        let conflict = conflict.unwrap();
+
+        let candidate = req.get_action().clone();
+        if candidate.is_none() {
+            return Ok(false);
+        }
+
+        //check allow permissions
+        let permissions = policy.get_permission();
+        if permissions.is_none() {
+            return Ok(false);
+        }
+        let prohibitions = policy.get_prohibition();
+
+        /*
+         * 1. Check Assigner and Assignee match in each permission
+         * 2. Check Target match in each permission
+         * 3. Check Action match in each permission
+         * 4. Check Constraint match in each permission
+         * 5. Check Obligation match in each permission
+         * 6. Check Above match in each prohibition
+         * 7. Check Conflict Strategy
+         */
+        let candidate_assignee = req.get_assignee();
+        let candidate_assigner = req.get_assigner();
+        let candidate_action = req.get_action();
+
+        let mut permitted = false;
+        if let Some(permissions) = permissions {
+            for permission in permissions {
+                let candidate_assignee = candidate_assignee.clone();
+                let policy_assignee = permission.get_assignee().clone();
+                let mut assignee_verified = false;
+                if candidate_assignee.is_some() && policy_assignee.is_some() {
+                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                    if let Ok(true) = ret {
+                        assignee_verified = true;
+                    }
+                }
+                if !assignee_verified {
+                    //no need to check other parts, must have exact one assignee
+                    continue;
+                }
+
+                //do assigner verification
+                let candidate_assigner = candidate_assigner.clone();
+                let policy_assigner = permission.get_assigner().clone();
+                let mut assigner_verified = false;
+                let assigner = permission.get_assigner();
+                if candidate_assigner.is_some() && assigner.is_some() {
+                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                    if let Ok(true) = ret {
+                        assigner_verified = true;
+                    }
+                }
+                if !assigner_verified {
+                    //no need to check other parts, must have exact one assigner
+                    continue;
+                }
+
+                //do action verification
+                let candidate_action = candidate_action.clone().unwrap();
+                let policy_action = permission.get_action().clone().unwrap();
+                let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                let mut action_verified = false;
+                if let Ok(true) = result {
+                    action_verified = true;
+                }
+                if !action_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //do target verification
+                let candidate_target = req.get_target().clone().unwrap();
+                let policy_target = permission.get_target().clone().unwrap();
+                let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                let mut target_verified = false;
+                if let Ok(true) = result {
+                    target_verified = true;
+                }
+                if !target_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //check constraint
+                let policy_constraint = permission.get_constraint();
+                let mut constraint_verified = false;
+                if let Some(constraint) = policy_constraint {
+                    let ret = ConstraintInference::infer(world,constraint);
+                    if let Ok(true) = ret {
+                        constraint_verified = true;
+                    }
+                } else {
+                    constraint_verified = true;
+                }
+
+                if constraint_verified {
+                    //every thing ok here, a permission is matched already
+                    permitted = true;
+                    break;
+                }
+            }
+        }
+
+        //check prohibition
+        if permitted {
+            let mut prohibited = false;
+            if let Some(prohibits) = prohibitions {
+                for prohibit in prohibits {
+                    let candidate_assignee = candidate_assignee.clone();
+                    let policy_assignee = prohibit.get_assignee().clone();
+
+                    //do assignee verification
+                    let mut assignee_verified = false;
+                    if candidate_assignee.is_some() && policy_assignee.is_some() {
+                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                        if let Ok(true) = ret {
+                            assignee_verified = true;
+                        }
+                    }
+                    if !assignee_verified {
+                        //no need to check other parts, must have exact one assignee
+                        continue;
+                    }
+
+                    //do assigner verification
+                    let candidate_assigner = candidate_assigner.clone();
+                    let policy_assigner = prohibit.get_assigner().clone();
+                    let mut assigner_verified = false;
+                    let assigner = prohibit.get_assigner();
+                    if candidate_assigner.is_some() && assigner.is_some() {
+                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                        if let Ok(true) = ret {
+                            assigner_verified = true;
+                        }
+                    }
+                    if !assigner_verified {
+                        //no need to check other parts, must have exact one assigner
+                        continue;
+                    }
+
+                    //do action verification
+                    let candidate_action = candidate_action.clone().unwrap();
+                    let policy_action = prohibit.get_action().clone().unwrap();
+                    let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                    let mut action_verified = false;
+                    if let Ok(true) = result {
+                        action_verified = true;
+                    }
+
+                    if !action_verified {
+                        //no need to check other parts, must have exact one action
+                        continue;
+                    }
+
+                    //do target verification
+                    let candidate_target = req.get_target().clone().unwrap();
+                    let policy_target = prohibit.get_target().clone().unwrap();
+                    let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                    let mut target_verified = false;
+                    if let Ok(true) = result {
+                        target_verified = true;
+                    }
+                    if !target_verified {
+                        continue;
+                    }
+
+                    //check constraint
+                    let policy_constraint = prohibit.get_constraint();
+                    let mut constraint_verified = false;
+                    if let Some(constraint) = policy_constraint {
+                        let ret = ConstraintInference::infer(world,constraint);
+                        if let Ok(true) = ret {
+                            constraint_verified = true;
+                        }
+                    }
+                    if constraint_verified {
+                        prohibited = true;
+                        break;
+                    }
+                }
+            }
+            if prohibited {
+                //already permitted, need to check conflict strategy
+                return match conflict {
+                    ConflictStrategy::perm => {
+                        Ok(true)
+                    }
+                    ConflictStrategy::prohibit => {
+                        Ok(false)
+                    }
+                    ConflictStrategy::invalid => {
+                        Ok(false)
+                    }
+                }
+            }
+            return Ok(true);
+        }
+
+        //here not matched any permission at this level, need to check inheritFrom
+        let inheritFrom = policy.get_inheritFrom().clone();
+        let inheritFrom = inheritFrom.unwrap();
+        for inherit in inheritFrom {
+            let inherit_policy = world.get_policy(inherit.to_string());
+            if let Some(inherit_policy) = inherit_policy {
+                let result = PolicyEngine::eval(world,inherit_policy,req);
+                if let Ok(true) = result {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
 
 impl Evaluator for Privacy {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
-        Ok(true)
+        let policy = &self.policy;
+        let mut conflict = policy.get_conflict().clone();
+        if conflict.is_none() {
+            conflict = Some(ConflictStrategy::perm);
+        }
+        let conflict = conflict.unwrap();
+
+        let candidate = req.get_action().clone();
+        if candidate.is_none() {
+            return Ok(false);
+        }
+
+        //check allow permissions
+        let permissions = policy.get_permission();
+        if permissions.is_none() {
+            return Ok(false);
+        }
+        let prohibitions = policy.get_prohibition();
+
+        /*
+         * 1. Check Assigner and Assignee match in each permission
+         * 2. Check Target match in each permission
+         * 3. Check Action match in each permission
+         * 4. Check Constraint match in each permission
+         * 5. Check Obligation match in each permission
+         * 6. Check Above match in each prohibition
+         * 7. Check Conflict Strategy
+         */
+        let candidate_assignee = req.get_assignee();
+        let candidate_assigner = req.get_assigner();
+        let candidate_action = req.get_action();
+
+        let mut permitted = false;
+        if let Some(permissions) = permissions {
+            for permission in permissions {
+                let candidate_assignee = candidate_assignee.clone();
+                let policy_assignee = permission.get_assignee().clone();
+                let mut assignee_verified = false;
+                if candidate_assignee.is_some() && policy_assignee.is_some() {
+                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                    if let Ok(true) = ret {
+                        assignee_verified = true;
+                    }
+                }
+                if !assignee_verified {
+                    //no need to check other parts, must have exact one assignee
+                    continue;
+                }
+
+                //do assigner verification
+                let candidate_assigner = candidate_assigner.clone();
+                let policy_assigner = permission.get_assigner().clone();
+                let mut assigner_verified = false;
+                let assigner = permission.get_assigner();
+                if candidate_assigner.is_some() && assigner.is_some() {
+                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                    if let Ok(true) = ret {
+                        assigner_verified = true;
+                    }
+                }
+                if !assigner_verified {
+                    //no need to check other parts, must have exact one assigner
+                    continue;
+                }
+
+                //do action verification
+                let candidate_action = candidate_action.clone().unwrap();
+                let policy_action = permission.get_action().clone().unwrap();
+                let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                let mut action_verified = false;
+                if let Ok(true) = result {
+                    action_verified = true;
+                }
+                if !action_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //do target verification
+                let candidate_target = req.get_target().clone().unwrap();
+                let policy_target = permission.get_target().clone().unwrap();
+                let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                let mut target_verified = false;
+                if let Ok(true) = result {
+                    target_verified = true;
+                }
+                if !target_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //check constraint
+                let policy_constraint = permission.get_constraint();
+                let mut constraint_verified = false;
+                if let Some(constraint) = policy_constraint {
+                    let ret = ConstraintInference::infer(world,constraint);
+                    if let Ok(true) = ret {
+                        constraint_verified = true;
+                    }
+                }else {
+                    //for no constraint, it is always permitted
+                    constraint_verified = true;
+                }
+
+                if constraint_verified {
+                    //every thing ok here, a permission is matched already
+                    permitted = true;
+                    break;
+                }
+            }
+        }
+
+        //check prohibition
+        if permitted {
+            let mut prohibited = false;
+            if let Some(prohibits) = prohibitions {
+                for prohibit in prohibits {
+                    let candidate_assignee = candidate_assignee.clone();
+                    let policy_assignee = prohibit.get_assignee().clone();
+
+                    //do assignee verification
+                    let mut assignee_verified = false;
+                    if candidate_assignee.is_some() && policy_assignee.is_some() {
+                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                        if let Ok(true) = ret {
+                            assignee_verified = true;
+                        }
+                    }
+                    if !assignee_verified {
+                        //no need to check other parts, must have exact one assignee
+                        continue;
+                    }
+
+                    //do assigner verification
+                    let candidate_assigner = candidate_assigner.clone();
+                    let policy_assigner = prohibit.get_assigner().clone();
+                    let mut assigner_verified = false;
+                    let assigner = prohibit.get_assigner();
+                    if candidate_assigner.is_some() && assigner.is_some() {
+                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                        if let Ok(true) = ret {
+                            assigner_verified = true;
+                        }
+                    }
+                    if !assigner_verified {
+                        //no need to check other parts, must have exact one assigner
+                        continue;
+                    }
+
+                    //do action verification
+                    let candidate_action = candidate_action.clone().unwrap();
+                    let policy_action = prohibit.get_action().clone().unwrap();
+                    let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                    let mut action_verified = false;
+                    if let Ok(true) = result {
+                        action_verified = true;
+                    }
+
+                    if !action_verified {
+                        //no need to check other parts, must have exact one action
+                        continue;
+                    }
+
+                    //do target verification
+                    let candidate_target = req.get_target().clone().unwrap();
+                    let policy_target = prohibit.get_target().clone().unwrap();
+                    let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                    let mut target_verified = false;
+                    if let Ok(true) = result {
+                        target_verified = true;
+                    }
+                    if !target_verified {
+                        continue;
+                    }
+
+                    //check constraint
+                    let policy_constraint = prohibit.get_constraint();
+                    let mut constraint_verified = false;
+                    if let Some(constraint) = policy_constraint {
+                        let ret = ConstraintInference::infer(world,constraint);
+                        if let Ok(true) = ret {
+                            constraint_verified = true;
+                        }
+                    } else {
+                        constraint_verified = true;
+                    }
+
+                    if constraint_verified {
+                        prohibited = true;
+                        break;
+                    }
+                }
+            }
+            if prohibited {
+                //already permitted, need to check conflict strategy
+                return match conflict {
+                    ConflictStrategy::perm => {
+                        Ok(true)
+                    }
+                    ConflictStrategy::prohibit => {
+                        Ok(false)
+                    }
+                    ConflictStrategy::invalid => {
+                        Ok(false)
+                    }
+                }
+            }
+            return Ok(true);
+        }
+
+        //here not matched any permission at this level, need to check inheritFrom
+        let inheritFrom = policy.get_inheritFrom().clone();
+        let inheritFrom = inheritFrom.unwrap();
+        for inherit in inheritFrom {
+            let inherit_policy = world.get_policy(inherit.to_string());
+            if let Some(inherit_policy) = inherit_policy {
+                let result = PolicyEngine::eval(world,inherit_policy,req);
+                if let Ok(true) = result {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
 
 impl Evaluator for Request {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
-        Ok(true)
+        let policy = &self.policy;
+        let mut conflict = policy.get_conflict().clone();
+        if conflict.is_none() {
+            conflict = Some(ConflictStrategy::perm);
+        }
+        let conflict = conflict.unwrap();
+
+        let candidate = req.get_action().clone();
+        if candidate.is_none() {
+            return Ok(false);
+        }
+
+        //check allow permissions
+        let permissions = policy.get_permission();
+        if permissions.is_none() {
+            return Ok(false);
+        }
+        let prohibitions = policy.get_prohibition();
+
+        /*
+         * 1. Check Assigner and Assignee match in each permission
+         * 2. Check Target match in each permission
+         * 3. Check Action match in each permission
+         * 4. Check Constraint match in each permission
+         * 5. Check Obligation match in each permission
+         * 6. Check Above match in each prohibition
+         * 7. Check Conflict Strategy
+         */
+        let candidate_assignee = req.get_assignee();
+        let candidate_assigner = req.get_assigner();
+        let candidate_action = req.get_action();
+
+        let mut permitted = false;
+        if let Some(permissions) = permissions {
+            for permission in permissions {
+                let candidate_assignee = candidate_assignee.clone();
+                let policy_assignee = permission.get_assignee().clone();
+                let mut assignee_verified = false;
+                if candidate_assignee.is_some() && policy_assignee.is_some() {
+                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                    if let Ok(true) = ret {
+                        assignee_verified = true;
+                    }
+                }
+                if !assignee_verified {
+                    //no need to check other parts, must have exact one assignee
+                    continue;
+                }
+
+                //do assigner verification
+                let candidate_assigner = candidate_assigner.clone();
+                let policy_assigner = permission.get_assigner().clone();
+                let mut assigner_verified = false;
+                let assigner = permission.get_assigner();
+                if candidate_assigner.is_some() && assigner.is_some() {
+                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                    if let Ok(true) = ret {
+                        assigner_verified = true;
+                    }
+                }
+                if !assigner_verified {
+                    //no need to check other parts, must have exact one assigner
+                    continue;
+                }
+
+                //do action verification
+                let candidate_action = candidate_action.clone().unwrap();
+                let policy_action = permission.get_action().clone().unwrap();
+                let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                let mut action_verified = false;
+                if let Ok(true) = result {
+                    action_verified = true;
+                }
+                if !action_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //do target verification
+                let candidate_target = req.get_target().clone().unwrap();
+                let policy_target = permission.get_target().clone().unwrap();
+                let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                let mut target_verified = false;
+                if let Ok(true) = result {
+                    target_verified = true;
+                }
+                if !target_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //check constraint
+                let policy_constraint = permission.get_constraint();
+                let mut constraint_verified = false;
+                if let Some(constraint) = policy_constraint {
+                    let ret = ConstraintInference::infer(world,constraint);
+                    if let Ok(true) = ret {
+                        constraint_verified = true;
+                    }
+                }else {
+                    //for no constraint, just match
+                    constraint_verified = true;
+                }
+
+                if constraint_verified {
+                    //every thing ok here, a permission is matched already
+                    permitted = true;
+                    break;
+                }
+            }
+        }
+
+        //check prohibition
+        if permitted {
+            let mut prohibited = false;
+            if let Some(prohibits) = prohibitions {
+                for prohibit in prohibits {
+                    let candidate_assignee = candidate_assignee.clone();
+                    let policy_assignee = prohibit.get_assignee().clone();
+
+                    //do assignee verification
+                    let mut assignee_verified = false;
+                    if candidate_assignee.is_some() && policy_assignee.is_some() {
+                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                        if let Ok(true) = ret {
+                            assignee_verified = true;
+                        }
+                    }
+                    if !assignee_verified {
+                        //no need to check other parts, must have exact one assignee
+                        continue;
+                    }
+
+                    //do assigner verification
+                    let candidate_assigner = candidate_assigner.clone();
+                    let policy_assigner = prohibit.get_assigner().clone();
+                    let mut assigner_verified = false;
+                    let assigner = prohibit.get_assigner();
+                    if candidate_assigner.is_some() && assigner.is_some() {
+                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                        if let Ok(true) = ret {
+                            assigner_verified = true;
+                        }
+                    }
+                    if !assigner_verified {
+                        //no need to check other parts, must have exact one assigner
+                        continue;
+                    }
+
+                    //do action verification
+                    let candidate_action = candidate_action.clone().unwrap();
+                    let policy_action = prohibit.get_action().clone().unwrap();
+                    let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                    let mut action_verified = false;
+                    if let Ok(true) = result {
+                        action_verified = true;
+                    }
+
+                    if !action_verified {
+                        //no need to check other parts, must have exact one action
+                        continue;
+                    }
+
+                    //do target verification
+                    let candidate_target = req.get_target().clone().unwrap();
+                    let policy_target = prohibit.get_target().clone().unwrap();
+                    let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                    let mut target_verified = false;
+                    if let Ok(true) = result {
+                        target_verified = true;
+                    }
+                    if !target_verified {
+                        continue;
+                    }
+
+                    //check constraint
+                    let policy_constraint = prohibit.get_constraint();
+                    let mut constraint_verified = false;
+                    if let Some(constraint) = policy_constraint {
+                        let ret = ConstraintInference::infer(world,constraint);
+                        if let Ok(true) = ret {
+                            constraint_verified = true;
+                        }
+                    } else {
+                        constraint_verified = true;
+                    }
+
+                    if constraint_verified {
+                        prohibited = true;
+                        break;
+                    }
+                }
+            }
+            if prohibited {
+                //already permitted, need to check conflict strategy
+                return match conflict {
+                    ConflictStrategy::perm => {
+                        Ok(true)
+                    }
+                    ConflictStrategy::prohibit => {
+                        Ok(false)
+                    }
+                    ConflictStrategy::invalid => {
+                        Ok(false)
+                    }
+                }
+            }
+            return Ok(true);
+        }
+
+        //here not matched any permission at this level, need to check inheritFrom
+        let inheritFrom = policy.get_inheritFrom().clone();
+        let inheritFrom = inheritFrom.unwrap();
+        for inherit in inheritFrom {
+            let inherit_policy = world.get_policy(inherit.to_string());
+            if let Some(inherit_policy) = inherit_policy {
+                let result = PolicyEngine::eval(world,inherit_policy,req);
+                if let Ok(true) = result {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
 
 impl Evaluator for Assert {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
-        Ok(true)
+        let policy = &self.policy;
+        let mut conflict = policy.get_conflict().clone();
+        if conflict.is_none() {
+            conflict = Some(ConflictStrategy::perm);
+        }
+        let conflict = conflict.unwrap();
+
+        let candidate = req.get_action().clone();
+        if candidate.is_none() {
+            return Ok(false);
+        }
+
+        //check allow permissions
+        let permissions = policy.get_permission();
+        if permissions.is_none() {
+            return Ok(false);
+        }
+        let prohibitions = policy.get_prohibition();
+
+        /*
+         * 1. Check Assigner and Assignee match in each permission
+         * 2. Check Target match in each permission
+         * 3. Check Action match in each permission
+         * 4. Check Constraint match in each permission
+         * 5. Check Obligation match in each permission
+         * 6. Check Above match in each prohibition
+         * 7. Check Conflict Strategy
+         */
+        let candidate_assignee = req.get_assignee();
+        let candidate_assigner = req.get_assigner();
+        let candidate_action = req.get_action();
+
+        let mut permitted = false;
+        if let Some(permissions) = permissions {
+            for permission in permissions {
+                let candidate_assignee = candidate_assignee.clone();
+                let policy_assignee = permission.get_assignee().clone();
+                let mut assignee_verified = false;
+                if candidate_assignee.is_some() && policy_assignee.is_some() {
+                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                    if let Ok(true) = ret {
+                        assignee_verified = true;
+                    }
+                }
+                // if !assignee_verified {
+                //     //no need to check other parts, must have exact one assignee
+                //     continue;
+                // }
+
+                //do assigner verification
+                let candidate_assigner = candidate_assigner.clone();
+                let policy_assigner = permission.get_assigner().clone();
+                let mut assigner_verified = false;
+                let assigner = permission.get_assigner();
+                if candidate_assigner.is_some() && assigner.is_some() {
+                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                    if let Ok(true) = ret {
+                        assigner_verified = true;
+                    }
+                }
+                // if !assigner_verified {
+                //     //no need to check other parts, must have exact one assigner
+                //     continue;
+                // }
+
+                //at least one of assignee or assigner must be verified
+                if !assignee_verified && !assigner_verified {
+                    //both assignee and assigner not verified
+                    continue;
+                }
+
+                //do action verification
+                let candidate_action = candidate_action.clone().unwrap();
+                let policy_action = permission.get_action().clone().unwrap();
+                let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                let mut action_verified = false;
+                if let Ok(true) = result {
+                    action_verified = true;
+                }
+                if !action_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //do target verification
+                let candidate_target = req.get_target().clone().unwrap();
+                let policy_target = permission.get_target().clone().unwrap();
+                let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                let mut target_verified = false;
+                if let Ok(true) = result {
+                    target_verified = true;
+                }
+                if !target_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //check constraint
+                let policy_constraint = permission.get_constraint();
+                let mut constraint_verified = false;
+                if let Some(constraint) = policy_constraint {
+                    let ret = ConstraintInference::infer(world,constraint);
+                    if let Ok(true) = ret {
+                        constraint_verified = true;
+                    }
+                } else {
+                    constraint_verified = true;
+                }
+
+                if constraint_verified {
+                    //every thing ok here, a permission is matched already
+                    permitted = true;
+                    break;
+                }
+            }
+        }
+
+        //check prohibition
+        if permitted {
+            let mut prohibited = false;
+            if let Some(prohibits) = prohibitions {
+                for prohibit in prohibits {
+                    let candidate_assignee = candidate_assignee.clone();
+                    let policy_assignee = prohibit.get_assignee().clone();
+
+                    //do assignee verification
+                    let mut assignee_verified = false;
+                    if candidate_assignee.is_some() && policy_assignee.is_some() {
+                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                        if let Ok(true) = ret {
+                            assignee_verified = true;
+                        }
+                    }
+                    // if !assignee_verified {
+                    //     //no need to check other parts, must have exact one assignee
+                    //     continue;
+                    // }
+
+                    //do assigner verification
+                    let candidate_assigner = candidate_assigner.clone();
+                    let policy_assigner = prohibit.get_assigner().clone();
+                    let mut assigner_verified = false;
+                    let assigner = prohibit.get_assigner();
+                    if candidate_assigner.is_some() && assigner.is_some() {
+                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                        if let Ok(true) = ret {
+                            assigner_verified = true;
+                        }
+                    }
+                    // if !assigner_verified {
+                    //     //no need to check other parts, must have exact one assigner
+                    //     continue;
+                    // }
+
+                    //at least one of assignee or assigner must be verified
+                    if !assignee_verified && !assigner_verified {
+                        continue;
+                    }
+
+                    //do action verification
+                    let candidate_action = candidate_action.clone().unwrap();
+                    let policy_action = prohibit.get_action().clone().unwrap();
+                    let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                    let mut action_verified = false;
+                    if let Ok(true) = result {
+                        action_verified = true;
+                    }
+
+                    if !action_verified {
+                        //no need to check other parts, must have exact one action
+                        continue;
+                    }
+
+                    //do target verification
+                    let candidate_target = req.get_target().clone().unwrap();
+                    let policy_target = prohibit.get_target().clone().unwrap();
+                    let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                    let mut target_verified = false;
+                    if let Ok(true) = result {
+                        target_verified = true;
+                    }
+                    if !target_verified {
+                        continue;
+                    }
+
+                    //check constraint
+                    let policy_constraint = prohibit.get_constraint();
+                    let mut constraint_verified = false;
+                    if let Some(constraint) = policy_constraint {
+                        let ret = ConstraintInference::infer(world,constraint);
+                        if let Ok(true) = ret {
+                            constraint_verified = true;
+                        }
+                    } else {
+                        //this is for no constraint in policy
+                        constraint_verified = true;
+                    }
+
+                    if constraint_verified {
+                        prohibited = true;
+                        break;
+                    }
+                }
+            }
+            if prohibited {
+                //already permitted, need to check conflict strategy
+                return match conflict {
+                    ConflictStrategy::perm => {
+                        Ok(true)
+                    }
+                    ConflictStrategy::prohibit => {
+                        Ok(false)
+                    }
+                    ConflictStrategy::invalid => {
+                        Ok(false)
+                    }
+                }
+            }
+            return Ok(true);
+        }
+
+        //here not matched any permission at this level, need to check inheritFrom
+        let inheritFrom = policy.get_inheritFrom().clone();
+        let inheritFrom = inheritFrom.unwrap();
+        for inherit in inheritFrom {
+            let inherit_policy = world.get_policy(inherit.to_string());
+            if let Some(inherit_policy) = inherit_policy {
+                let result = PolicyEngine::eval(world,inherit_policy,req);
+                if let Ok(true) = result {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
 
 impl Evaluator for Ticket {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
-        Ok(true)
+        let policy = &self.policy;
+        let mut conflict = policy.get_conflict().clone();
+        if conflict.is_none() {
+            conflict = Some(ConflictStrategy::perm);
+        }
+        let conflict = conflict.unwrap();
+
+        let candidate = req.get_action().clone();
+        if candidate.is_none() {
+            return Ok(false);
+        }
+
+        //check allow permissions
+        let permissions = policy.get_permission();
+        if permissions.is_none() {
+            return Ok(false);
+        }
+        let prohibitions = policy.get_prohibition();
+
+        /*
+         * 1. Check Assigner and Assignee match in each permission
+         * 2. Check Target match in each permission
+         * 3. Check Action match in each permission
+         * 4. Check Constraint match in each permission
+         * 5. Check Obligation match in each permission
+         * 6. Check Above match in each prohibition
+         * 7. Check Conflict Strategy
+         */
+        let candidate_assignee = req.get_assignee();
+        let candidate_assigner = req.get_assigner();
+        let candidate_action = req.get_action();
+
+        let mut permitted = false;
+        if let Some(permissions) = permissions {
+            for permission in permissions {
+                // no assignee in ticket
+                // let candidate_assignee = candidate_assignee.clone();
+                // let policy_assignee = permission.get_assignee().clone();
+                // let mut assignee_verified = false;
+                // if candidate_assignee.is_some() && policy_assignee.is_some() {
+                //     let union = PartyUnion::Party(policy_assignee.unwrap());
+                //     let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                //     if let Ok(true) = ret {
+                //         assignee_verified = true;
+                //     }
+                // }
+                // if !assignee_verified {
+                //     //no need to check other parts, must have exact one assignee
+                //     continue;
+                // }
+
+                //do assigner verification
+                let candidate_assigner = candidate_assigner.clone();
+                let policy_assigner = permission.get_assigner().clone();
+                let mut assigner_verified = false;
+                let assigner = permission.get_assigner();
+                if candidate_assigner.is_some() && assigner.is_some() {
+                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                    if let Ok(true) = ret {
+                        assigner_verified = true;
+                    }
+                }
+                if !assigner_verified {
+                    //no need to check other parts, must have exact one assigner
+                    continue;
+                }
+
+                //do action verification
+                let candidate_action = candidate_action.clone().unwrap();
+                let policy_action = permission.get_action().clone().unwrap();
+                let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                let mut action_verified = false;
+                if let Ok(true) = result {
+                    action_verified = true;
+                }
+                if !action_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //do target verification
+                let candidate_target = req.get_target().clone().unwrap();
+                let policy_target = permission.get_target().clone().unwrap();
+                let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                let mut target_verified = false;
+                if let Ok(true) = result {
+                    target_verified = true;
+                }
+                if !target_verified {
+                    //no need to check other parts, must have exact one action
+                    continue;
+                }
+
+                //check constraint
+                let policy_constraint = permission.get_constraint();
+                let mut constraint_verified = false;
+                if let Some(constraint) = policy_constraint {
+                    let ret = ConstraintInference::infer(world,constraint);
+                    if let Ok(true) = ret {
+                        constraint_verified = true;
+                    }
+                } else {
+                    constraint_verified = true;
+                }
+
+                if constraint_verified {
+                    //every thing ok here, a permission is matched already
+                    permitted = true;
+                    break;
+                }
+            }
+        }
+
+        //check prohibition
+        if permitted {
+            let mut prohibited = false;
+            if let Some(prohibits) = prohibitions {
+                for prohibit in prohibits {
+                    let candidate_assignee = candidate_assignee.clone();
+                    let policy_assignee = prohibit.get_assignee().clone();
+
+                    //do assignee verification
+                    let mut assignee_verified = false;
+                    if candidate_assignee.is_some() && policy_assignee.is_some() {
+                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
+                        if let Ok(true) = ret {
+                            assignee_verified = true;
+                        }
+                    }
+                    if !assignee_verified {
+                        //no need to check other parts, must have exact one assignee
+                        continue;
+                    }
+
+                    //do assigner verification
+                    let candidate_assigner = candidate_assigner.clone();
+                    let policy_assigner = prohibit.get_assigner().clone();
+                    let mut assigner_verified = false;
+                    let assigner = prohibit.get_assigner();
+                    if candidate_assigner.is_some() && assigner.is_some() {
+                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
+                        if let Ok(true) = ret {
+                            assigner_verified = true;
+                        }
+                    }
+                    if !assigner_verified {
+                        //no need to check other parts, must have exact one assigner
+                        continue;
+                    }
+
+                    //do action verification
+                    let candidate_action = candidate_action.clone().unwrap();
+                    let policy_action = prohibit.get_action().clone().unwrap();
+                    let result = ActionInferencer::infer(world,policy_action,candidate_action);
+                    let mut action_verified = false;
+                    if let Ok(true) = result {
+                        action_verified = true;
+                    }
+
+                    if !action_verified {
+                        //no need to check other parts, must have exact one action
+                        continue;
+                    }
+
+                    //do target verification
+                    let candidate_target = req.get_target().clone().unwrap();
+                    let policy_target = prohibit.get_target().clone().unwrap();
+                    let result = AssetInferencer::infer(world,policy_target,candidate_target);
+                    let mut target_verified = false;
+                    if let Ok(true) = result {
+                        target_verified = true;
+                    }
+                    if !target_verified {
+                        continue;
+                    }
+
+                    //check constraint
+                    let policy_constraint = prohibit.get_constraint();
+                    let mut constraint_verified = false;
+                    if let Some(constraint) = policy_constraint {
+                        let ret = ConstraintInference::infer(world,constraint);
+                        if let Ok(true) = ret {
+                            constraint_verified = true;
+                        }
+                    } else {
+                        constraint_verified = true;
+                    }
+
+                    if constraint_verified {
+                        prohibited = true;
+                        break;
+                    }
+                }
+            }
+            if prohibited {
+                //already permitted, need to check conflict strategy
+                return match conflict {
+                    ConflictStrategy::perm => {
+                        Ok(true)
+                    }
+                    ConflictStrategy::prohibit => {
+                        Ok(false)
+                    }
+                    ConflictStrategy::invalid => {
+                        Ok(false)
+                    }
+                }
+            }
+            return Ok(true);
+        }
+
+        //here not matched any permission at this level, need to check inheritFrom
+        let inheritFrom = policy.get_inheritFrom().clone();
+        let inheritFrom = inheritFrom.unwrap();
+        for inherit in inheritFrom {
+            let inherit_policy = world.get_policy(inherit.to_string());
+            if let Some(inherit_policy) = inherit_policy {
+                let result = PolicyEngine::eval(world,inherit_policy,req);
+                if let Ok(true) = result {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
 
