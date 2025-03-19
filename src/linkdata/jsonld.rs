@@ -404,42 +404,6 @@ mod test {
             }
         }
     }
-
-    #[test]
-    fn test_jsonld(){
-        #[derive(Debug,Builder,Getter,Setter,Serialize,Deserialize)]
-        struct aa {
-            permission: Option<Vec<String>>,
-        }
-        let val = r#"
-{
-  "http://www.w3.org/ns/odrl/2/permission": {
-    "http://www.w3.org/ns/odrl/2/action": {
-      "@id": "http://www.w3.org/ns/odrl/2/use"
-    },
-    "http://www.w3.org/ns/odrl/2/assignee": {
-      "@id": "https://aa/cc"
-    },
-    "http://www.w3.org/ns/odrl/2/assigner": {
-      "@id": "https://aa/bb"
-    },
-    "http://www.w3.org/ns/odrl/2/constraint": {
-      "http://www.w3.org/ns/odrl/2/leftOperand": {
-        "@id": "http://www.w3.org/ns/odrl/2/dateTime"
-      },
-      "http://www.w3.org/ns/odrl/2/operator": {
-        "@id": "http://www.w3.org/ns/odrl/2/lt"
-      },
-      "http://www.w3.org/ns/odrl/2/rightOperand": "2025-12-31"
-    },
-    "http://www.w3.org/ns/odrl/2/target": {
-      "@id": "https://example.com/media/video1.mp4"
-    }
-  }
-}"#;
-        let policy =   serde_json::from_str::<aa>(&val);
-        println!("{:?}", policy);
-    }
 }
 
 #[cfg(test)]

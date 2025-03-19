@@ -17,6 +17,8 @@ headerPath = "Apache-2.0.txt"
 excludes = [
     # Plain text files AS IS
     "*.txt",
+    "*.md",
+    "*.jsonld",
 
     # Test files
     "fmt/tests/content/**",
