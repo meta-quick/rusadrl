@@ -1,0 +1,43 @@
+{
+    "@context": [
+      "https://www.w3.org/ns/odrl.jsonld",
+      {
+        "title": "https://datasafe.io/ds/1.1/title",
+        "creator": "https://datasafe.io/ds/1.1/creator",
+        "dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
+      }
+    ],
+    "type": "Policy",
+    "uid": "http://abc.tds/policy/demo/1",
+    "assigner": {
+      "uid": "https://aa/bb",
+      "type": "Party",
+      "assignerOf": "http://aaa/a"
+     },
+    "assignee": {
+       "uid": "https://aa/dd",
+       "type": "PartyCollection",
+       "source": "https://aa.com/aaa"
+     },
+    "title": "Policy 1",
+    "conflict": "Perm",
+    "inheritFrom": ["http://a.com/abc","http://a.com/abc"],
+    "profile": "http://a.com/abc",
+    "permission": {
+        "type": "LogicalConstraint",
+        "uid": "http://example.com/constraint/1",
+        "operator": "and",
+        "constraint": [
+            {
+                "leftOperand": "dateTime",
+                "operator": "gt",
+                "rightOperand": "2024-01-01"
+            },
+            {
+                "leftOperand": "dateTime",
+                "operator": "lt",
+                "rightOperand": "2025-12-31"
+            }
+        ]
+    }
+}

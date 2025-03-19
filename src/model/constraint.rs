@@ -113,12 +113,6 @@ pub struct LogicConstraint {
     pub operand: Option<Vec<Constraint>>
 }
 
-impl Default for LogicConstraint {
-    fn default() -> Self {
-        LogicConstraint::new("http://www.w3.org/ns/odrl/2/LogicalConstraint")
-    }
-}
-
 impl LogicConstraint {
     pub fn new(iri: &str) -> Self {
         let uid = String::from(iri);

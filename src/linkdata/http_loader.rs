@@ -90,6 +90,7 @@ impl Loader for HttpLoader {
     }
 }
 
+#[cfg(test)]
 mod test {
     use reqwest::{Client, Proxy};
 

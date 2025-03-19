@@ -13,4 +13,5 @@
 // limitations under the License.
 
 mod jsonld;
-mod httploader;
+mod http_loader;
+mod odrl_loader;

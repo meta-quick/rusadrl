@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #![allow(dead_code)]
 #![warn(non_snake_case)]
 #![allow(unused_imports)]
@@ -19,6 +20,7 @@
 use std::str::FromStr;
 use anyhow::anyhow;
 use lombok::{Builder, Getter, GetterMut, Setter};
+use serde_json::to_string;
 use crate::model::stateworld::StateWorld;
 use crate::reference::types::{OperandValue, OperandValueType};
 
@@ -163,7 +165,13 @@ impl  ConstraintLeftOperand {
 impl TryFrom<&str> for ConstraintLeftOperand {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let value = value.to_lowercase();
+        let mut value = value.to_lowercase();
+        if value.contains("/") {
+            let index = value.rfind("/").unwrap();
+            value = value.split_at(index+1).1.to_string();
+        }
+
+
         match value.as_str() {
             //please match all the operator in the order of the enum
             "absoluteposition" => Ok(ConstraintLeftOperand::absolutePosition),

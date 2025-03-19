@@ -12,22 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(unused)]
+
+use std::collections::HashMap;
+use std::fmt::Debug;
 use anyhow::Error;
 use iref::IriBuf;
 use json_ld::Expand;
 use json_ld::ExpandedDocument;
 use json_ld::RemoteDocument;
 use json_ld::{syntax::{Parse, Value}};
+use lombok::{Builder, Getter, GetterMut, Setter};
 use reqwest::{Proxy};
-use super::httploader;
+use serde::{Deserialize, Serialize};
+use super::http_loader;
+
+
 
 
 #[derive(Default)]
-pub struct JsonLdHttpParser{
+pub struct JsonLdParser{
     pub proxy: Option<Proxy>,
 }
 
-impl JsonLdHttpParser {
+impl JsonLdParser {
     pub fn new(proxy: Option<Proxy>) -> Self {
         Self {
            proxy,
@@ -35,17 +43,22 @@ impl JsonLdHttpParser {
     }
 
     pub async  fn parse(&mut self, iri: String, val: String) -> Result<ExpandedDocument<IriBuf>, Error> {
+        let inner = Value::parse_str(&val);
+        if inner.is_err() {
+            return Err(anyhow::anyhow!("{}", inner.err().unwrap()));
+        }
+
         let input = RemoteDocument::new(
             // We use `IriBuf` as IRI type.
             Some(IriBuf::new(iri).unwrap()),
             // Optional content type.
             Some("application/ld+json".parse().unwrap()),
             // The actual content.
-            Value::parse_str(&val).expect("unable to parse document").0,
+            inner.unwrap().0,
         );
 
 
-        let mut loader = httploader::HttpLoader::new(self.proxy.clone());
+        let mut loader = http_loader::HttpLoader::new(self.proxy.clone());
         let result =  input.expand(&mut loader).await;
         match result {
             Ok(document) => {
@@ -57,13 +70,266 @@ impl JsonLdHttpParser {
         }
     }
 }
+#[derive(Debug,Builder,Clone,Getter,GetterMut,Setter,Serialize,Deserialize)]
+#[derive(Default)]
+pub struct JsonLdAnyValue {
+    #[serde(rename = "@id")]
+    uid: Option<String>
+}
+
+#[derive(Debug,Builder,Clone,Getter,GetterMut,Setter,Serialize,Deserialize)]
+pub struct JsonLdParty {
+    #[serde(rename = "@id")]
+    uid: Option<String>,
+
+    #[serde(rename = "@type")]
+    party_type: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/partOf")]
+    part_of: Option<JsonLdAnyValue>,
+
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assigneeOf")]
+    assignee_of: Option<JsonLdAnyValue>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assignerOf")]
+    assigner_of: Option<JsonLdAnyValue>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/source")]
+    source: Option<JsonLdAnyValue>,
+
+    function: Option<JsonLdAnyValue>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/refinement")]
+    refinement: Option<JsonLdOptionArray<JsonLdConstraintOne>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum JsonLdContext {
+    Single(String),
+    Multiple(Vec<serde_json::Value>), // 允许数组形式
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+pub struct  JsonLdAction{
+    #[serde(rename = "@id")]
+    uid: String,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/includedIn")]
+    included_in: Option<Vec<String>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/implies")]
+    implies: Option<Vec<JsonLdAction>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/refinement")]
+    refinement: Option<JsonLdOptionArray<JsonLdConstraintOne>>,
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+pub struct  JsonLdAsset {
+    #[serde(rename = "@id")]
+    uid: String,
+    #[serde(rename = "@type")]
+    asset_type: Option<String>,
+
+    relation: Option<String>,
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/partOf")]
+    part_of: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/source")]
+    source: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/refinement")]
+    refinement: Option<JsonLdOptionArray<JsonLdConstraintOne>>,
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+pub struct JsonLdLeftOperand {
+    #[serde(rename = "@id")]
+    uid: String,
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+pub struct JsonLdConstraintOperator {
+    #[serde(rename = "@id")]
+    uid: String,
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+#[derive(Default)]
+pub struct  JsonLdConstraint{
+    #[serde(rename = "@id")]
+    uid: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/dataType")]
+    data_type: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/unit")]
+    unit: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/name")]
+    name: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/status")]
+    status: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/leftOperand")]
+    left_operand: Option<JsonLdLeftOperand>,
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/operator")]
+    operator: Option<JsonLdConstraintOperator>,
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/rightOperand")]
+    right_operand: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/rightOperandReference")]
+    right_operand_reference: Option<String>,
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+#[derive(Default)]
+pub struct  JsonLdLogicConstraint{
+    #[serde(rename = "@id")]
+    uid: String,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/operator")]
+    operator: Option<JsonLdAnyValue>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/constraint")]
+    constraint: Option<JsonLdOptionArray<JsonLdConstraint>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum JsonLdConstraintOne {
+    LogicConstraint(JsonLdLogicConstraint),
+    Constraint(JsonLdConstraint),
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+pub struct  JsonLdConsequence {
+
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+#[derive(Default)]
+pub struct  JsonLdDuty {
+    #[serde(rename = "@id")]
+    uid: Option<String>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/action")]
+    action: Option<JsonLdAction>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
+    target: Option<JsonLdAsset>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assigner")]
+    assigner: Option<JsonLdParty>,
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assignee")]
+    assignee: Option<JsonLdParty>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/constraint")]
+    constraint: Option<JsonLdOptionArray<JsonLdConstraintOne>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/consequence")]
+    consequence: Option<JsonLdConsequence>,
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+#[derive(Default)]
+pub struct  JsonLdPermission{
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/action")]
+    action: Option<JsonLdAction>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
+    target: Option<JsonLdAsset>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assigner")]
+    assigner: Option<JsonLdParty>,
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assignee")]
+    assignee: Option<JsonLdParty>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/constraint")]
+    constraint: Option<JsonLdOptionArray<JsonLdConstraintOne>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/duty")]
+    duty: Option<JsonLdDuty>,
+}
+
+#[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
+#[derive(Default)]
+pub struct  JsonLdProhibition{
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/action")]
+    action: Option<JsonLdAction>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
+    target: Option<JsonLdAsset>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assigner")]
+    assigner: Option<JsonLdParty>,
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assignee")]
+    assignee: Option<JsonLdParty>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/constraint")]
+    constraint: Option<JsonLdOptionArray<JsonLdConstraintOne>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/remedy")]
+    remedy: Option<JsonLdDuty>,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum JsonLdOptionArray<T: Clone> {
+    Single(T),
+    Multiple(Vec<T>),
+}
+
+#[derive(Debug,Getter,GetterMut,Setter,Serialize,Deserialize)]
+pub struct JsonLdPolicy {
+    #[serde(rename = "@context")]
+    context: Option<JsonLdContext>,
+    #[serde(rename = "@id")]
+    uid: String,
+
+    #[serde(rename = "@type")]
+    policy_type: String,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/profile")]
+    profile: JsonLdOptionArray<JsonLdAnyValue>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/inheritFrom")]
+    inherit_from: JsonLdOptionArray<JsonLdAnyValue>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/conflict")]
+    conflict: Option<JsonLdAnyValue>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assigner")]
+    assigner: Option<JsonLdParty>,
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/assignee")]
+    assignee: Option<JsonLdParty>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
+    target: Option<JsonLdAsset>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/permission")]
+    permission: Option<JsonLdOptionArray<JsonLdPermission>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/prohibition")]
+    prohibition: Option<JsonLdOptionArray<JsonLdProhibition>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/obligation")]
+    obligation: Option<JsonLdOptionArray<JsonLdDuty>>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/constraint")]
+    constraint: Option<JsonLdOptionArray<JsonLdConstraintOne>>
+}
 
 #[cfg(test)]
 mod test {
     use super::*;
     #[tokio::test]
     async fn test_odrl_policy(){
-        let mut parse = JsonLdHttpParser::new(None);
+        let mut parse = JsonLdParser::new(None);
         let val = r#"
             {
                 "@context": [
@@ -138,6 +404,42 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn test_jsonld(){
+        #[derive(Debug,Builder,Getter,Setter,Serialize,Deserialize)]
+        struct aa {
+            permission: Option<Vec<String>>,
+        }
+        let val = r#"
+{
+  "http://www.w3.org/ns/odrl/2/permission": {
+    "http://www.w3.org/ns/odrl/2/action": {
+      "@id": "http://www.w3.org/ns/odrl/2/use"
+    },
+    "http://www.w3.org/ns/odrl/2/assignee": {
+      "@id": "https://aa/cc"
+    },
+    "http://www.w3.org/ns/odrl/2/assigner": {
+      "@id": "https://aa/bb"
+    },
+    "http://www.w3.org/ns/odrl/2/constraint": {
+      "http://www.w3.org/ns/odrl/2/leftOperand": {
+        "@id": "http://www.w3.org/ns/odrl/2/dateTime"
+      },
+      "http://www.w3.org/ns/odrl/2/operator": {
+        "@id": "http://www.w3.org/ns/odrl/2/lt"
+      },
+      "http://www.w3.org/ns/odrl/2/rightOperand": "2025-12-31"
+    },
+    "http://www.w3.org/ns/odrl/2/target": {
+      "@id": "https://example.com/media/video1.mp4"
+    }
+  }
+}"#;
+        let policy =   serde_json::from_str::<aa>(&val);
+        println!("{:?}", policy);
+    }
 }
 
 #[cfg(test)]
@@ -148,7 +450,7 @@ mod test_jsonld {
     use json_ld::{context_processing::ProcessedRef, Compact};
     use reqwest::Proxy;
 
-    use crate::linkdata::httploader;
+    use crate::linkdata::http_loader;
 
     #[tokio::test]
     async fn test_no_loader() {
@@ -247,7 +549,7 @@ mod test_jsonld {
         let input: RemoteDocumentReference = RemoteDocumentReference::iri(iri!("http://192.168.12.7:8000/contexts/person.jsonld").to_owned());
         
         // let mut loader = httploader::HttpLoader::new(Some(Proxy::https("192.168.12.51:9981").unwrap()));
-        let mut loader = httploader::HttpLoader::new(None);
+        let mut loader = http_loader::HttpLoader::new(None);
         // loader.mount(iri!("https://json-ld.org/").to_owned(), "examples");
 
         //print current working directory
@@ -293,7 +595,7 @@ mod test_jsonld {
             }"#).expect("unable to parse file").0
         );
 
-        let mut loader = httploader::HttpLoader::new(None);
+        let mut loader = http_loader::HttpLoader::new(None);
         let expanded = input
             .expand(&mut loader)
             .await
@@ -372,7 +674,7 @@ mod test_jsonld {
             }"#).expect("unable to parse file").0
         );
 
-        let mut loader = httploader::HttpLoader::new(None);
+        let mut loader = http_loader::HttpLoader::new(None);
         let expanded = input
             .expand(&mut loader)
             .await
@@ -427,7 +729,7 @@ mod test_jsonld {
             }"#).expect("unable to parse file").0
         );
 
-        let mut loader = httploader::HttpLoader::new(Some(Proxy::https("192.168.12.51:9981").unwrap()));
+        let mut loader = http_loader::HttpLoader::new(Some(Proxy::https("192.168.12.51:9981").unwrap()));
         let expanded = input
             .expand(&mut loader)
             .await;
@@ -457,7 +759,7 @@ mod test_jsonld {
     async fn test_json_ld_document() {
         use json_ld::{syntax::{Parse, Value}, JsonLdProcessor, RemoteDocument};
         use json_ld::iref::IriBuf;
-        use crate::linkdata::httploader;
+        use crate::linkdata::http_loader;
 
         // Create a "remote" document by parsing a file manually.
          let input = RemoteDocument::new(
@@ -522,7 +824,7 @@ mod test_jsonld {
          "#).expect("unable to parse file").0
         );
 
-        let mut loader = httploader::HttpLoader::new(None);
+        let mut loader = http_loader::HttpLoader::new(None);
         // let mut loader = json_ld::NoLoader::default();
         let expanded = input
             .expand(&mut loader)
@@ -617,7 +919,7 @@ mod test_jsonld {
                             println!("id: {id}");
                         } 
                         None => {
-                            println!("{:?}",object);
+                            println!("@ {:?}",object);
                         }                       
                     }
                 }

@@ -92,7 +92,7 @@ impl PartyInferencer {
                                 ConstraintUnion::Constraint(constraint) => {
                                     let ret = constraint.eval(world);
                                     match ret {
-                                        Ok(ret) => {
+                                        Ok(true) => {
                                             refined = true;
                                         },
                                         _ => {
@@ -102,7 +102,7 @@ impl PartyInferencer {
                                 ConstraintUnion::LogicConstraint(ac) => {
                                     let ret = ac.eval(world);
                                     match ret {
-                                        Ok(ret) => {
+                                        Ok(true) => {
                                             refined = true;
                                         },
                                         _ => {

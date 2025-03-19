@@ -11,17 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #![allow(dead_code)]
-#![warn(non_snake_case)]
+#![allow(non_snake_case)]
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
 use lombok::{Builder, Getter, GetterMut, Setter};
-use crate::model::constraint_left_operand::ConstraintLeftOperand;
 use crate::model::data_type::DataType;
 use crate::reference::types::OperandValue;
 
 #[derive(Debug,Clone)]
+#[allow(non_camel_case_types)]
 pub enum ConstraintOperator {
     //http://www.w3.org/ns/odrl/2/eq
     eq,
@@ -52,7 +53,12 @@ pub enum ConstraintOperator {
 impl TryFrom<&str> for ConstraintOperator {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let value = value.to_lowercase();
+        let mut value = value.to_lowercase();
+        if value.contains("/") {
+            let index = value.rfind("/").unwrap();
+            value = value.split_at(index+1).1.to_string();
+        }
+
         match value.as_str() {
             //please match all the operator in the order of the enum
             "eq" => Ok(ConstraintOperator::eq),
@@ -342,6 +348,7 @@ impl ConstraintOperator {
         }
     }
 
+    #[allow(non_snake_case)]
     fn isA(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
         match dty {
             DataType::String
@@ -360,6 +367,7 @@ impl ConstraintOperator {
         }
     }
 
+    #[allow(non_snake_case)]
     fn hasPart(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
         match dty {
             DataType::String
@@ -452,6 +460,7 @@ impl ConstraintOperator {
 }
 
 #[derive(Debug,Clone)]
+#[allow(non_camel_case_types)]
 pub enum ConstraintLogicOperator {
     //http://www.w3.org/ns/odrl/2/or
     or,
