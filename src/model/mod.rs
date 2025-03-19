@@ -30,3 +30,4 @@ pub mod error;
 pub mod stateworld;
 pub mod data_type;
 pub mod eval;
+pub mod model_factory;

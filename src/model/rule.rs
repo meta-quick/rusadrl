@@ -21,7 +21,7 @@ use crate::model::metadata::Metadata;
 use crate::model::action::Action;
 use crate::model::asset::{Asset, AssetUnion};
 use crate::model::constraint::{ConstraintUnion};
-use crate::model::party::Party;
+use crate::model::party::{PartyUnion};
 
 //http://www.w3.org/ns/odrl/2/Rule
 #[derive(Debug,Builder,Getter,GetterMut,Setter,Default,Clone)]
@@ -30,8 +30,8 @@ pub struct Rule {
     pub action: Option<Action>,
     pub target: Option<AssetUnion>,
     pub constraint: Option<Vec<ConstraintUnion>>,
-    pub assignee: Option<Party>,
-    pub assigner: Option<Party>,
+    pub assignee: Option<PartyUnion>,
+    pub assigner: Option<PartyUnion>,
     pub output: Option<Asset>,
     pub relation: Option<IriBuf>,
     pub function: String,

@@ -78,6 +78,16 @@ pub struct JsonLdAnyValue {
 }
 
 #[derive(Debug,Builder,Clone,Getter,GetterMut,Setter,Serialize,Deserialize)]
+#[derive(Default)]
+pub struct JsonLdDataType {
+    #[serde(rename = "@type")]
+    data_type: Option<String>,
+
+    #[serde(rename = "@value")]
+    value: Option<String>
+}
+
+#[derive(Debug,Builder,Clone,Getter,GetterMut,Setter,Serialize,Deserialize)]
 pub struct JsonLdParty {
     #[serde(rename = "@id")]
     uid: Option<String>,
@@ -163,7 +173,7 @@ pub struct  JsonLdConstraint{
     uid: Option<String>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/dataType")]
-    data_type: Option<String>,
+    data_type: Option<JsonLdDataType>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/unit")]
     unit: Option<String>,
@@ -178,11 +188,12 @@ pub struct  JsonLdConstraint{
     left_operand: Option<JsonLdLeftOperand>,
     #[serde(rename = "http://www.w3.org/ns/odrl/2/operator")]
     operator: Option<JsonLdConstraintOperator>,
+
     #[serde(rename = "http://www.w3.org/ns/odrl/2/rightOperand")]
-    right_operand: Option<String>,
+    right_operand: Option<serde_json::Value>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/rightOperandReference")]
-    right_operand_reference: Option<String>,
+    right_operand_reference: Option<serde_json::Value>,
 }
 
 #[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
@@ -292,7 +303,7 @@ pub struct JsonLdPolicy {
     uid: String,
 
     #[serde(rename = "@type")]
-    policy_type: String,
+    policy_type: Option<String>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/profile")]
     profile: JsonLdOptionArray<JsonLdAnyValue>,

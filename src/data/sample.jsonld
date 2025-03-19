@@ -7,17 +7,31 @@
 			"dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
 		}
 	],
-	"type": "Policy",
+	"type": "Agreement",
 	"uid": "http://abc.tds/policy/demo/1",
 	"assigner": {
 		"uid": "https://aa/bb/gaosg",
 		"type": "Party",
-		"assignerOf": "http://aaa/a"
+		"assignerOf": "http://aaa/a",
+		"refinement": {
+            "dataType": "integer",
+            "unit": "m",
+            "leftOperand": "dateTime",
+            "operator": "lt",
+            "rightOperand": "abc"
+		}
 	},
 	"assignee": {
 		"uid": "https://aa/gaosg",
 		"type": "PartyCollection",
-		"source": "https://aa.com/aaa"
+		"source": "https://aa.com/aaa",
+		"refinement": {
+            "dataType": "integer",
+            "unit": "m",
+            "leftOperand": "dateTime",
+            "operator": "lt",
+            "rightOperand": "abc"
+        }
 	},
 	"title": "Policy 1",
 	"conflict": "Perm",
@@ -25,11 +39,12 @@
 	"profile": "http://a.com/abc",
 	"permission": [{
 			"action": "use",
-			"assignee": "http://abc/123",
 			"constraint": {
+				"dataType": "integer",
+				"unit": "m",
 				"leftOperand": "dateTime",
 				"operator": "lt",
-				"rightOperand": "2025-12-31"
+				"rightOperand": "abc"
 			}
 		},
 		{
@@ -41,7 +56,7 @@
 				"constraint": [{
 						"leftOperand": "dateTime",
 						"operator": "gt",
-						"rightOperand": "2024-01-01"
+						"rightOperandReference": "http://a/a"
 					},
 					{
 						"leftOperand": "dateTime",
@@ -51,89 +66,5 @@
 				]
 			}
 		}
-	],
-	"prohibition": [{
-			"action": "use",
-			"target": "https://example.com/media/video1.mp4",
-			"assigner": "https://aa/bb",
-			"assignee": "https://aa/cc",
-			"constraint": {
-				"leftOperand": "dateTime",
-				"operator": "lt",
-				"rightOperand": "2025-12-31"
-			}
-		},
-		{
-			"action": "use",
-			"target": "https://example.com/media/video1.mp4",
-			"assigner": "https://aa/bb",
-			"assignee": "https://aa/cc",
-			"constraint": {
-				"type": "LogicalConstraint",
-				"uid": "http://example.com/constraint/1",
-				"operator": "and",
-				"constraint": [{
-						"leftOperand": "dateTime",
-						"operator": "gt",
-						"rightOperand": "2024-01-01"
-					},
-					{
-						"leftOperand": "dateTime",
-						"operator": "lt",
-						"rightOperand": "2025-12-31"
-					}
-				]
-			}
-		}
-	],
-	"constraint": {
-		"type": "LogicalConstraint",
-		"uid": "http://example.com/constraint/1",
-		"operator": "and",
-		"constraint": [{
-				"leftOperand": "dateTime",
-				"operator": "gt",
-				"rightOperand": "2024-01-01"
-			},
-			{
-				"leftOperand": "dateTime",
-				"operator": "lt",
-				"rightOperand": "2025-12-31"
-			}
-		]
-	},
-	"obligation": [{
-                  			"action": "use",
-                  			"target": "https://example.com/media/video1.mp4",
-                  			"assigner": "https://aa/bb",
-                  			"assignee": "https://aa/cc",
-                  			"constraint": {
-                  				"leftOperand": "dateTime",
-                  				"operator": "lt",
-                  				"rightOperand": "2025-12-31"
-                  			}
-                  		},
-                  		{
-                  			"action": "use",
-                  			"target": "https://example.com/media/video1.mp4",
-                  			"assigner": "https://aa/bb",
-                  			"assignee": "https://aa/cc",
-                  			"constraint": {
-                  				"type": "LogicalConstraint",
-                  				"uid": "http://example.com/constraint/1",
-                  				"operator": "and",
-                  				"constraint": [{
-                  						"leftOperand": "dateTime",
-                  						"operator": "gt",
-                  						"rightOperand": "2024-01-01"
-                  					},
-                  					{
-                  						"leftOperand": "dateTime",
-                  						"operator": "lt",
-                  						"rightOperand": "2025-12-31"
-                  					}
-                  				]
-                  			}
-                  		}
-    ]
+	]
 }

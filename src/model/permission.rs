@@ -19,7 +19,7 @@ use lombok::{Builder,Setter,GetterMut,Getter};
 use crate::model::action::Action;
 use crate::model::asset::{AssetUnion};
 use crate::model::constraint::{ConstraintUnion};
-use crate::model::party::Party;
+use crate::model::party::{PartyUnion};
 use crate::model::rule::Rule;
 
 
@@ -30,19 +30,19 @@ pub struct Permission {
 }
 
 impl Permission {
-    pub fn set_assignee(&mut self, assignee: Option<Party>) {
+    pub fn set_assignee(&mut self, assignee: Option<PartyUnion>) {
         self.duty.set_assignee(assignee);
     }
 
-    pub fn get_assignee(&self) -> &Option<Party> {
+    pub fn get_assignee(&self) -> &Option<PartyUnion> {
         self.duty.get_assignee()
     }
 
-    pub fn set_assigner(&mut self, assigner: Option<Party>) {
+    pub fn set_assigner(&mut self, assigner: Option<PartyUnion>) {
         self.duty.set_assigner(assigner);
     }
 
-    pub fn get_assigner(&self) -> &Option<Party> {
+    pub fn get_assigner(&self) -> &Option<PartyUnion> {
         self.duty.get_assigner()
     }
 

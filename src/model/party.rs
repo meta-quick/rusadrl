@@ -57,6 +57,7 @@ impl Party {
     }
 }
 
+#[derive(Debug,Clone)]
 pub enum PartyUnion {
     Party(Party),
     PartyCollection(PartyCollection),

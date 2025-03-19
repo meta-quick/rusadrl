@@ -38,8 +38,8 @@ pub struct Policy {
     pub profile: Option<Vec<IriBuf>>,
 
     pub action: Option<Action>,
-    pub assignee: Option<Party>,
-    pub assigner: Option<Party>,
+    pub assignee: Option<PartyUnion>,
+    pub assigner: Option<PartyUnion>,
     pub conflict: Option<ConflictStrategy>,
     pub permission: Option<Vec<Permission>>,
     pub prohibition: Option<Vec<Prohibition>>,
@@ -100,7 +100,6 @@ pub struct Assert {
 pub struct Ticket {
     pub policy: Policy,
 }
-
 
 #[derive(Debug, Clone)]
 pub enum PolicyUnion {
@@ -199,7 +198,7 @@ impl Evaluator for Agreement  {
                 let policy_assignee = permission.get_assignee().clone();
                 let mut assignee_verified = false;
                 if candidate_assignee.is_some() && policy_assignee.is_some() {
-                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let union = policy_assignee.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                     if let Ok(true) = ret {
                         assignee_verified = true;
@@ -216,7 +215,7 @@ impl Evaluator for Agreement  {
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let union = policy_assigner.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;
@@ -284,7 +283,7 @@ impl Evaluator for Agreement  {
                    //do assignee verification
                    let mut assignee_verified = false;
                    if candidate_assignee.is_some() && policy_assignee.is_some() {
-                       let union = PartyUnion::Party(policy_assignee.unwrap());
+                       let union = policy_assignee.unwrap();
                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                        if let Ok(true) = ret {
                            assignee_verified = true;
@@ -301,7 +300,7 @@ impl Evaluator for Agreement  {
                    let mut assigner_verified = false;
                    let assigner = prohibit.get_assigner();
                    if candidate_assigner.is_some() && assigner.is_some() {
-                       let union = PartyUnion::Party(policy_assigner.unwrap());
+                       let union = policy_assigner.unwrap();
                        let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                        if let Ok(true) = ret {
                            assigner_verified = true;
@@ -449,7 +448,7 @@ impl Evaluator for Offer {
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let union = policy_assigner.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;
@@ -517,7 +516,7 @@ impl Evaluator for Offer {
                     //do assignee verification
                     let mut assignee_verified = false;
                     if candidate_assignee.is_some() && policy_assignee.is_some() {
-                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let union = policy_assignee.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                         if let Ok(true) = ret {
                             assignee_verified = true;
@@ -534,7 +533,7 @@ impl Evaluator for Offer {
                     let mut assigner_verified = false;
                     let assigner = prohibit.get_assigner();
                     if candidate_assigner.is_some() && assigner.is_some() {
-                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let union = policy_assigner.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                         if let Ok(true) = ret {
                             assigner_verified = true;
@@ -664,7 +663,7 @@ impl Evaluator for Set {
                 let policy_assignee = permission.get_assignee().clone();
                 let mut assignee_verified = false;
                 if candidate_assignee.is_some() && policy_assignee.is_some() {
-                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let union = policy_assignee.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                     if let Ok(true) = ret {
                         assignee_verified = true;
@@ -681,7 +680,7 @@ impl Evaluator for Set {
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let union = policy_assigner.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;
@@ -749,7 +748,7 @@ impl Evaluator for Set {
                     //do assignee verification
                     let mut assignee_verified = false;
                     if candidate_assignee.is_some() && policy_assignee.is_some() {
-                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let union = policy_assignee.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                         if let Ok(true) = ret {
                             assignee_verified = true;
@@ -766,7 +765,7 @@ impl Evaluator for Set {
                     let mut assigner_verified = false;
                     let assigner = prohibit.get_assigner();
                     if candidate_assigner.is_some() && assigner.is_some() {
-                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let union = policy_assigner.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                         if let Ok(true) = ret {
                             assigner_verified = true;
@@ -893,7 +892,7 @@ impl Evaluator for Privacy {
                 let policy_assignee = permission.get_assignee().clone();
                 let mut assignee_verified = false;
                 if candidate_assignee.is_some() && policy_assignee.is_some() {
-                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let union = policy_assignee.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                     if let Ok(true) = ret {
                         assignee_verified = true;
@@ -910,7 +909,7 @@ impl Evaluator for Privacy {
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let union = policy_assigner.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;
@@ -979,7 +978,7 @@ impl Evaluator for Privacy {
                     //do assignee verification
                     let mut assignee_verified = false;
                     if candidate_assignee.is_some() && policy_assignee.is_some() {
-                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let union = policy_assignee.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                         if let Ok(true) = ret {
                             assignee_verified = true;
@@ -996,7 +995,7 @@ impl Evaluator for Privacy {
                     let mut assigner_verified = false;
                     let assigner = prohibit.get_assigner();
                     if candidate_assigner.is_some() && assigner.is_some() {
-                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let union = policy_assigner.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                         if let Ok(true) = ret {
                             assigner_verified = true;
@@ -1126,7 +1125,7 @@ impl Evaluator for Request {
                 let policy_assignee = permission.get_assignee().clone();
                 let mut assignee_verified = false;
                 if candidate_assignee.is_some() && policy_assignee.is_some() {
-                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let union = policy_assignee.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                     if let Ok(true) = ret {
                         assignee_verified = true;
@@ -1143,7 +1142,7 @@ impl Evaluator for Request {
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let union = policy_assigner.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;
@@ -1212,7 +1211,7 @@ impl Evaluator for Request {
                     //do assignee verification
                     let mut assignee_verified = false;
                     if candidate_assignee.is_some() && policy_assignee.is_some() {
-                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let union = policy_assignee.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                         if let Ok(true) = ret {
                             assignee_verified = true;
@@ -1229,7 +1228,7 @@ impl Evaluator for Request {
                     let mut assigner_verified = false;
                     let assigner = prohibit.get_assigner();
                     if candidate_assigner.is_some() && assigner.is_some() {
-                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let union = policy_assigner.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                         if let Ok(true) = ret {
                             assigner_verified = true;
@@ -1359,7 +1358,7 @@ impl Evaluator for Assert {
                 let policy_assignee = permission.get_assignee().clone();
                 let mut assignee_verified = false;
                 if candidate_assignee.is_some() && policy_assignee.is_some() {
-                    let union = PartyUnion::Party(policy_assignee.unwrap());
+                    let union = policy_assignee.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                     if let Ok(true) = ret {
                         assignee_verified = true;
@@ -1376,7 +1375,7 @@ impl Evaluator for Assert {
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let union = policy_assigner.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;
@@ -1450,7 +1449,7 @@ impl Evaluator for Assert {
                     //do assignee verification
                     let mut assignee_verified = false;
                     if candidate_assignee.is_some() && policy_assignee.is_some() {
-                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let union = policy_assignee.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                         if let Ok(true) = ret {
                             assignee_verified = true;
@@ -1467,7 +1466,7 @@ impl Evaluator for Assert {
                     let mut assigner_verified = false;
                     let assigner = prohibit.get_assigner();
                     if candidate_assigner.is_some() && assigner.is_some() {
-                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let union = policy_assigner.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                         if let Ok(true) = ret {
                             assigner_verified = true;
@@ -1621,7 +1620,7 @@ impl Evaluator for Ticket {
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = PartyUnion::Party(policy_assigner.unwrap());
+                    let union = policy_assigner.unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;
@@ -1689,7 +1688,7 @@ impl Evaluator for Ticket {
                     //do assignee verification
                     let mut assignee_verified = false;
                     if candidate_assignee.is_some() && policy_assignee.is_some() {
-                        let union = PartyUnion::Party(policy_assignee.unwrap());
+                        let union = policy_assignee.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assignee.unwrap());
                         if let Ok(true) = ret {
                             assignee_verified = true;
@@ -1706,7 +1705,7 @@ impl Evaluator for Ticket {
                     let mut assigner_verified = false;
                     let assigner = prohibit.get_assigner();
                     if candidate_assigner.is_some() && assigner.is_some() {
-                        let union = PartyUnion::Party(policy_assigner.unwrap());
+                        let union = policy_assigner.unwrap();
                         let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                         if let Ok(true) = ret {
                             assigner_verified = true;

@@ -20,7 +20,7 @@ use crate::model::action::Action;
 use crate::model::asset::{AssetUnion};
 use crate::model::constraint::ConstraintUnion;
 use crate::model::duty::Duty;
-use crate::model::party::Party;
+use crate::model::party::{PartyUnion};
 use crate::model::rule::Rule;
 
 
@@ -32,19 +32,19 @@ pub struct Prohibition {
 }
 
 impl Prohibition {
-    pub fn set_assignee(&mut self, assignee: Option<Party>) {
+    pub fn set_assignee(&mut self, assignee: Option<PartyUnion>) {
         self.rule.set_assignee(assignee);
     }
 
-    pub fn get_assignee(&self) -> &Option<Party> {
+    pub fn get_assignee(&self) -> &Option<PartyUnion> {
         self.rule.get_assignee()
     }
 
-    pub fn set_assigner(&mut self, assigner: Option<Party>) {
+    pub fn set_assigner(&mut self, assigner: Option<PartyUnion>) {
         self.rule.set_assigner(assigner);
     }
 
-    pub fn get_assigner(&self) -> &Option<Party> {
+    pub fn get_assigner(&self) -> &Option<PartyUnion> {
         self.rule.get_assigner()
     }
 
