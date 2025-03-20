@@ -106,7 +106,7 @@ impl LogicEval for Constraint {
 }
 
 
-#[derive(Debug,Builder, Clone)]
+#[derive(Debug,Builder,Getter,GetterMut,Setter,Default, Clone)]
 pub struct LogicConstraint {
     pub uid: Option<IriBuf>,
     pub operator: Option<ConstraintLogicOperator>,
@@ -121,9 +121,6 @@ impl LogicConstraint {
             operator: None,
             operand: None,
         }
-    }
-    pub fn get_operator(&self) -> Option<ConstraintLogicOperator> {
-        self.operator.clone()
     }
     pub fn get_operands(&self) -> Option<Vec<Constraint>> {
         self.operand.clone()
@@ -140,7 +137,7 @@ impl LogicEval for LogicConstraint {
             return Err(anyhow::Error::msg("No operator defined"));
         }
 
-        let operator = self.get_operator().unwrap();
+        let operator = self.get_operator().clone().unwrap();
         match operator {
             ConstraintLogicOperator::or => {
                 let operands = self.get_operands().unwrap();

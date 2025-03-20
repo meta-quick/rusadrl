@@ -152,6 +152,10 @@ impl TryFrom<&str> for ActionType {
     type Error = String;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let value = value.to_lowercase();
+        //find the last /
+        let index = value.rfind("/").unwrap();
+        let value = value.split_at(index+1).1.to_string();
+
         match value.as_str() {
             "acceptTracking" => Ok(ActionType::AcceptTracking),
             "aggregate" => Ok(ActionType::Aggregate),
@@ -202,6 +206,8 @@ impl TryFrom<&str> for ActionType {
             "translate" => Ok(ActionType::Translate),
             "uninstall" => Ok(ActionType::Uninstall),
             "watermark" => Ok(ActionType::Watermark),
+            "use" => Ok(ActionType::Use),
+            "transfer" => Ok(ActionType::Transfer),
             _ => Err(format!("Invalid action type: {}", value))
         }
     } 

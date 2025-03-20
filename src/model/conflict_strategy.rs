@@ -32,6 +32,13 @@ impl TryFrom<&str> for ConflictStrategy {
     type Error = anyhow::Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
+        //find the last /
+        let index = value.rfind("/").unwrap();
+        let value = value.split_at(index+1).1.to_string();
+
+        let value = value.to_lowercase();
+        let value = value.trim();
+
         let value = value.to_lowercase();
         match value.as_str() {
             "prohibit" => Ok(ConflictStrategy::prohibit),

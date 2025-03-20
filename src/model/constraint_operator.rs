@@ -476,6 +476,9 @@ impl TryFrom<&str> for ConstraintLogicOperator {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let value = value.to_lowercase();
+        //find the last /
+        let index = value.rfind("/").unwrap();
+        let value = value.split_at(index+1).1.to_string();
         match value.as_str() {
             //please match all the operator in the order of the enum
             "or" => Ok(ConstraintLogicOperator::or),

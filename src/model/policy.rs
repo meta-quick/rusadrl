@@ -19,9 +19,9 @@
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::action::{Action, ActionInferencer, ActionType};
-use crate::model::asset::{Asset, AssetInferencer};
+use crate::model::asset::{Asset, AssetInferencer, AssetUnion};
 use crate::model::conflict_strategy::ConflictStrategy;
-use crate::model::constraint::{Constraint, ConstraintInference};
+use crate::model::constraint::{ConstraintInference, ConstraintUnion};
 use crate::model::duty::Duty;
 use crate::model::metadata::Metadata;
 use crate::model::eval::Evaluator;
@@ -44,9 +44,9 @@ pub struct Policy {
     pub permission: Option<Vec<Permission>>,
     pub prohibition: Option<Vec<Prohibition>>,
     pub obligation: Option<Vec<Duty>>,
-    pub target: Option<Asset>,
+    pub target: Option<AssetUnion>,
     pub inheritFrom : Option<Vec<IriBuf>>,
-    pub constraint: Option<Vec<Constraint>>,
+    pub constraint: Option<Vec<ConstraintUnion>>,
     pub relation: Option<Vec<IriBuf>>,
     pub function: Option<Vec<IriBuf>>,
 

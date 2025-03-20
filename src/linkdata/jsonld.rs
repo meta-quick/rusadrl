@@ -25,6 +25,7 @@ use json_ld::{syntax::{Parse, Value}};
 use lombok::{Builder, Getter, GetterMut, Setter};
 use reqwest::{Proxy};
 use serde::{Deserialize, Serialize};
+use static_iref::iri;
 use super::http_loader;
 
 
@@ -59,6 +60,15 @@ impl JsonLdParser {
 
 
         let mut loader = http_loader::HttpLoader::new(self.proxy.clone());
+        // let mut loader = json_ld::FsLoader::default();;
+
+        //show current dir
+        // let current_dir = std::env::current_dir().unwrap();
+        // println!("Current dir: {:?}", current_dir);
+        //
+        // loader.mount(iri!("https://www.w3.org/ns/").to_owned(),"odrls");
+
+
         let result =  input.expand(&mut loader).await;
         match result {
             Ok(document) => {
@@ -200,7 +210,7 @@ pub struct  JsonLdConstraint{
 #[derive(Default)]
 pub struct  JsonLdLogicConstraint{
     #[serde(rename = "@id")]
-    uid: String,
+    uid: Option<String>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/operator")]
     operator: Option<JsonLdAnyValue>,
@@ -248,6 +258,9 @@ pub struct  JsonLdDuty {
 #[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
 #[derive(Default)]
 pub struct  JsonLdPermission{
+    #[serde(rename = "@id")]
+    uid: Option<String>,
+
     #[serde(rename = "http://www.w3.org/ns/odrl/2/action")]
     action: Option<JsonLdAction>,
 
@@ -269,6 +282,9 @@ pub struct  JsonLdPermission{
 #[derive(Debug,Clone,Builder,Getter,GetterMut,Setter,Serialize,Deserialize)]
 #[derive(Default)]
 pub struct  JsonLdProhibition{
+    #[serde(rename = "@id")]
+    uid: Option<String>,
+
     #[serde(rename = "http://www.w3.org/ns/odrl/2/action")]
     action: Option<JsonLdAction>,
 
@@ -318,6 +334,9 @@ pub struct JsonLdPolicy {
     assigner: Option<JsonLdParty>,
     #[serde(rename = "http://www.w3.org/ns/odrl/2/assignee")]
     assignee: Option<JsonLdParty>,
+
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/action")]
+    action: Option<JsonLdAction>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
     target: Option<JsonLdAsset>,
