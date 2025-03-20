@@ -16,6 +16,7 @@
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::str::FromStr;
 use anyhow::Error;
 use iref::IriBuf;
 use json_ld::Expand;
@@ -60,13 +61,7 @@ impl JsonLdParser {
 
 
         let mut loader = http_loader::HttpLoader::new(self.proxy.clone());
-        // let mut loader = json_ld::FsLoader::default();;
-
-        //show current dir
-        // let current_dir = std::env::current_dir().unwrap();
-        // println!("Current dir: {:?}", current_dir);
-        //
-        // loader.mount(iri!("https://www.w3.org/ns/").to_owned(),"odrls");
+        loader.mount(iri!("https://www.w3.org/ns/").to_owned(),std::path::PathBuf::from_str("odrls")?);
 
 
         let result =  input.expand(&mut loader).await;

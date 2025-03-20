@@ -11,13 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
 
+
+use iref::iri::{Path};
 use json_ld::syntax::Parse;
 use json_ld::LoadError;
 use json_ld::{Loader, RemoteDocument, syntax::Value};
 use json_ld::iref::{Iri, IriBuf};
 use reqwest::{Client};
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 use json_ld_core::fs::Error;
 use linked_data::json_syntax;
@@ -25,6 +31,7 @@ use linked_data::json_syntax;
 pub struct HttpLoader {
     client: Client,
     cache: Arc<std::sync::Mutex<HashMap<IriBuf, RemoteDocument<IriBuf, Value>>>>,
+    mounts: HashMap<IriBuf, std::path::PathBuf>,
 }
 
 impl HttpLoader {
@@ -34,16 +41,44 @@ impl HttpLoader {
                 HttpLoader {
                     client: Client::builder().proxy(proxy).gzip(true).build().unwrap(),
                     cache: Arc::new(std::sync::Mutex::new(HashMap::new())),
+                    mounts: HashMap::new(),
                 }
             },
             None => {
                 HttpLoader {
                     client: Client::builder().gzip(true).build().unwrap(),
                     cache: Arc::new(std::sync::Mutex::new(HashMap::new())),
+                    mounts: HashMap::new(),
                 }
                 
             }
         }
+    }
+
+    #[inline(always)]
+    pub fn mount(&mut self, iri: IriBuf, path: std::path::PathBuf) {
+        self.mounts.insert(iri, path);
+    }
+
+    pub fn unmount(&mut self, iri: &IriBuf) {
+        self.mounts.remove(iri);
+    }
+
+    pub fn unmount_all(&mut self) {
+        self.mounts.clear();
+    }
+
+    pub fn intercept(&self, iri: &IriBuf) -> Option<(String,std::path::PathBuf)> {
+        let iri = iri.to_string();
+        for (prefix, path) in self.mounts.iter() {
+            if iri.starts_with(prefix.as_str()) {
+                // Remove the prefix from the IRI, keep the rest
+                let rest = iri.split_at(prefix.as_str().len()).1.to_string();
+
+                return Some((rest,path.clone()));
+            }
+        }
+        None
     }
 }
 
@@ -58,6 +93,31 @@ impl Loader for HttpLoader {
             if let Some(doc) = cache.get(&iri) {
                 return Ok(doc.clone());
             }
+        }
+
+        // Check if the IRI is intercepted
+        if let Some((rest,path)) = self.intercept(&iri) {
+            let path = path.join(rest);
+            //print current path, and work directory
+            println!("path: {:?}", path.clone());
+            println!("work directory: {:?}", std::env::current_dir());
+
+            let x = std::fs::read_to_string(path.clone());
+            println!("{:?}", x);
+
+            let content = std::fs::read_to_string("/Users/gaosg/Projects/rusadrl/ordls/odrl.jsonld").map_err(|e| LoadError::new(iri.clone(), e) )?;
+            let (doc, _) = json_syntax::Value::parse_str(&content)
+                .map_err(|e| LoadError::new(url.to_owned(), Error::Parse(e)))?;
+
+            let document = RemoteDocument::new(Some(url.to_owned()), Some("application/ld+json".parse().unwrap()), doc);
+
+            // Cache the document
+            {
+                let mut cache = self.cache.lock().unwrap();
+                cache.insert(iri.clone(), document.clone());
+            }
+
+            return Ok(document);
         }
 
         // Fetch the document using HTTP

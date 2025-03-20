@@ -960,7 +960,12 @@ mod tests {
         let expanded = doc.unwrap();
 
         let policy = OdrlLoader::parse(expanded).await;
-        let a = OdrlLoader::compile(&mut policy.unwrap()).await;
-        println!("{a:#?}");
+        let policy = OdrlLoader::compile(&mut policy.unwrap()).await;
+
+        if let Ok(policy) = policy {
+            if let PolicyUnion::Agreement(agreement) = policy {
+                println!("{agreement:#?}");
+            }
+        }
     }
 }
