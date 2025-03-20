@@ -212,6 +212,9 @@ pub struct  JsonLdLogicConstraint{
     #[serde(rename = "@id")]
     uid: Option<String>,
 
+    #[serde(rename = "@type")]
+    constraint_type: String,
+
     #[serde(rename = "http://www.w3.org/ns/odrl/2/operator")]
     operator: Option<JsonLdAnyValue>,
 
@@ -241,7 +244,7 @@ pub struct  JsonLdDuty {
     action: Option<JsonLdAction>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
-    target: Option<JsonLdAsset>,
+    target: Option<JsonLdOptionArray<JsonLdAsset>>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/assigner")]
     assigner: Option<JsonLdParty>,
@@ -265,7 +268,7 @@ pub struct  JsonLdPermission{
     action: Option<JsonLdAction>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
-    target: Option<JsonLdAsset>,
+    target: Option<JsonLdOptionArray<JsonLdAsset>>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/assigner")]
     assigner: Option<JsonLdParty>,
@@ -289,7 +292,7 @@ pub struct  JsonLdProhibition{
     action: Option<JsonLdAction>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
-    target: Option<JsonLdAsset>,
+    target: Option<JsonLdOptionArray<JsonLdAsset>>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/assigner")]
     assigner: Option<JsonLdParty>,
@@ -325,7 +328,7 @@ pub struct JsonLdPolicy {
     profile: JsonLdOptionArray<JsonLdAnyValue>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/inheritFrom")]
-    inherit_from: JsonLdOptionArray<JsonLdAnyValue>,
+    inherit_from: Option<JsonLdOptionArray<JsonLdAnyValue>>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/conflict")]
     conflict: Option<JsonLdAnyValue>,
@@ -339,7 +342,7 @@ pub struct JsonLdPolicy {
     action: Option<JsonLdAction>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/target")]
-    target: Option<JsonLdAsset>,
+    target: Option<JsonLdOptionArray<JsonLdAsset>>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/permission")]
     permission: Option<JsonLdOptionArray<JsonLdPermission>>,

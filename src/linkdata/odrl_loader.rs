@@ -43,6 +43,7 @@ use crate::model::duty::Duty;
 use crate::model::model_factory::ModelFactory;
 use crate::model::party::{Party, PartyCollection, PartyUnion};
 use crate::model::permission::Permission;
+use crate::model::policy::{Agreement, PolicyUnion};
 use crate::model::prohibition::Prohibition;
 use crate::model::rule::Rule;
 
@@ -279,7 +280,7 @@ fn compile_party(json: &JsonLdParty) -> Option<PartyUnion> {
     }
 }
 
-fn compile_asset(json: &JsonLdAsset) -> Option<AssetUnion> {
+fn compile_asset_one(json: &JsonLdAsset) -> Option<AssetUnion> {
     //check party type
     let asset_type = json.get_asset_type().clone();
 
@@ -315,9 +316,25 @@ fn compile_asset(json: &JsonLdAsset) -> Option<AssetUnion> {
                 asset.set_partOf(Some(vec![to_iri(part_of.as_str()).unwrap()]));
             }
 
-            return None;
+            return Some(AssetUnion::Asset(asset));
         }
     }
+}
+
+fn compile_asset(json: &JsonLdOptionArray<JsonLdAsset>) -> Option<AssetUnion> {
+    match json {
+        JsonLdOptionArray::Single(asset) => {
+            let asset = compile_asset_one(&asset);
+            return asset;
+        }
+        JsonLdOptionArray::Multiple(assets) => {
+            for asset in assets {
+                let asset = compile_asset_one(&asset);
+                return asset;
+            }
+        }
+    }
+    return None;
 }
 
 fn compile_profile(json: &JsonLdOptionArray<JsonLdAnyValue>) -> Option<Vec<IriBuf>> {
@@ -611,6 +628,30 @@ fn compile_prohibition(json: &JsonLdOptionArray<JsonLdProhibition>) -> Result<Ve
     }
 }
 
+fn  compile_inherit_one(json: &JsonLdAnyValue) -> Result<IriBuf,anyhow::Error> {
+    let inherit = json.get_uid().clone().unwrap();
+    let inherit = to_iri(inherit.as_str()).unwrap();
+    Ok(inherit)
+}
+
+fn compile_inherit_from(json: &JsonLdOptionArray<JsonLdAnyValue>) -> Result<Vec<IriBuf>,anyhow::Error> {
+    let mut inherit_from: Vec<IriBuf> = vec![];
+    return match json {
+        JsonLdOptionArray::Single(inherit) => {
+            let inh = compile_inherit_one(inherit)?;
+            inherit_from.push(inh);
+            Ok(inherit_from)
+        }
+        JsonLdOptionArray::Multiple(inherits) => {
+            for inherit in inherits {
+                let inh = compile_inherit_one(inherit)?;
+                inherit_from.push(inh);
+            }
+            Ok(inherit_from)
+        }
+    }
+}
+
 impl OdrlLoader {
     pub async  fn load(iri: String, path: String) -> Result<ExpandedDocument, anyhow::Error> {
         // let proxy = Proxy::https("http://127.0.0.1:9981");
@@ -815,7 +856,7 @@ impl OdrlLoader {
         }
     }
 
-    pub async fn compile(policy: &JsonLdPolicy) -> Result<(), anyhow::Error> {
+    pub async fn compile(policy: &JsonLdPolicy) -> Result<PolicyUnion, anyhow::Error> {
         let mut type_ = policy.get_policy_type().clone();
         if type_.is_none() {
             type_ = Some("http://www.w3.org/ns/odrl/2/Set".to_string());
@@ -892,16 +933,19 @@ impl OdrlLoader {
                 }
 
                 // check and copy inheritFrom
-                // let inheritFrom = policy.get_inherit_from().clone();
-                // if inheritFrom.is_some() {
-                //     let inheritFrom = inheritFrom.unwrap();
-                //     eval.set_inherit_from(compile_inherit_from(&inheritFrom));
-                // }
+                let inherit_from = policy.get_inherit_from().clone();
+                if inherit_from.is_some() {
+                    let inherit_from = inherit_from.unwrap();
+                    eval.set_inheritFrom(compile_inherit_from(&inherit_from).ok());
+                }
+
+                let agreement = Agreement::builder().policy(eval.clone()).build();
+                return Ok(PolicyUnion::Agreement(agreement));
             }
             _ => {}
         }
 
-        Ok(())
+        Err(anyhow!("Error during compilation"))
     }
 }
 
@@ -917,6 +961,6 @@ mod tests {
 
         let policy = OdrlLoader::parse(expanded).await;
         let a = OdrlLoader::compile(&mut policy.unwrap()).await;
-        println!("{:#?}", a);
+        println!("{a:#?}");
     }
 }

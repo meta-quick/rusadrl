@@ -33,6 +33,7 @@
             "rightOperand": "abc"
         }
 	},
+    "target": "http://ab/a",
 	"title": "Policy 1",
 	"conflict": "Perm",
 	"inheritFrom": ["http://a.com/abc", "http://a.com/abc"],
