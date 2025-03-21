@@ -6,3 +6,5 @@
 
 # Binary files created by the project
 target/
+
+bindings/ffi/libs/

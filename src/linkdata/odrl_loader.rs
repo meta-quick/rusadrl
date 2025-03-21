@@ -666,13 +666,19 @@ fn compile_inherit_from(json: &JsonLdOptionArray<JsonLdAnyValue>) -> Result<Vec<
 }
 
 impl OdrlLoader {
-    pub async  fn load(iri: String, path: String) -> Result<ExpandedDocument, anyhow::Error> {
+    pub async  fn load_file(iri: String, path: String) -> Result<ExpandedDocument, anyhow::Error> {
         // let proxy = Proxy::https("http://127.0.0.1:9981");
         // let mut parse = JsonLdParser::new(proxy.ok());
         let mut parse = JsonLdParser::new(None);
         let val = std::fs::read_to_string(path)?;
 
         let document = parse.parse(iri, val.to_string()).await;
+        document
+    }
+
+    pub async  fn load_json(iri: String, json: String) -> Result<ExpandedDocument, anyhow::Error> {
+        let mut parse = JsonLdParser::new(None);
+        let document = parse.parse(iri, json).await;
         document
     }
 
@@ -1003,7 +1009,7 @@ mod tests {
             config.set_verbose(true);
         }
 
-        let doc = OdrlLoader::load("http://www.w3.org/ns/odrl/2".to_string(), path.to_string());
+        let doc = OdrlLoader::load_file("http://www.w3.org/ns/odrl/2".to_string(), path.to_string());
         let doc = doc.await;
         let expanded = doc.unwrap();
 

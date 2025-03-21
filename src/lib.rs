@@ -17,3 +17,6 @@ mod model;
 mod traits;
 mod reference;
 mod linkdata;
+
+pub use config::*;
+pub use linkdata::odrl_loader;

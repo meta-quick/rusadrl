@@ -1,3 +1,3 @@
 
 all:
-	gcc main.c -o main -L./target/release/ -ladrlcffi -Wl,-rpath,./target/release
+	gcc main.c -o main -L./libs/ -ladrlcffi -Wl,-rpath,./libs

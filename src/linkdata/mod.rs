@@ -14,4 +14,4 @@
 
 mod jsonld;
 mod http_loader;
-mod odrl_loader;
+pub mod odrl_loader;

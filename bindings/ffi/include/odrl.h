@@ -14,9 +14,10 @@
 #include <stdlib.h>
 
 
-int32_t add(int32_t a,
-            int32_t b);
+int32_t enable_verbose(int32_t verbose);
 
-void hello(void);
+int32_t delete_odrl_world(int64_t *ptr);
+
+int64_t create_odrl_world(const char *odrl);
 
 #endif  /* _ODRL_ */

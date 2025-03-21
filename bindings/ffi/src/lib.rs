@@ -24,25 +24,95 @@ the library.
 # How to build and install
 
 */
+use std::ffi::{CString, CStr};
+use std::os::raw::c_char;
 
 
-#[no_mangle]
-pub extern "C" fn add(a: i32, b: i32) -> i32 {
-    a + b
+mod ffi {
+    use std::borrow::BorrowMut;
+    use tokio::runtime::Runtime;
+    use rusadrl::{CONFIG, odrl_loader::OdrlLoader};
+
+    pub struct Engine;
+
+    impl Engine {
+        pub fn set_verbose(verbose: bool) {
+            println!("set_verbose: {}", verbose);
+            let mut config = CONFIG.lock().unwrap();
+            let config = config.borrow_mut();
+            config.set_verbose(true);
+        }
+
+        pub fn create_odrl_world(odrl: String) -> i64 {
+            let rt = Runtime::new().unwrap();
+            let policy = rt.block_on(async {
+                let doc = OdrlLoader::load_json("http://www.w3.org/ns/odrl/2".to_string(),odrl);
+
+                let doc = doc.await;
+                if doc.is_err() {
+                    return Err(doc.unwrap_err());
+                }
+                let expanded = doc.unwrap();
+                let policy = OdrlLoader::parse(expanded).await;
+                if policy.is_err() {
+                    return Err(policy.unwrap_err());
+                }
+                let policy = OdrlLoader::compile(&mut policy.unwrap()).await;
+                policy
+            });
+
+            if policy.is_err() {
+                return -1;
+            }
+
+            //return policy into raw pointer
+            let policy = policy.unwrap();
+            Box::into_raw(Box::new(policy)) as i64
+        }
+
+        pub fn delete_odrl_world(ptr: *mut i64) {
+            if ptr.is_null() {
+                return;
+            }
+
+            unsafe {
+               let _result =  Box::from_raw(ptr);
+            }
+        }
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn hello() {
-    println!("Hello from Rust!");
+pub extern "C" fn enable_verbose(verbose: i32) -> i32 {
+    ffi::Engine::set_verbose(verbose!=0);
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn delete_odrl_world(ptr: *mut i64) -> i32 {
+    ffi::Engine::delete_odrl_world(ptr);
+    0
+}
+
+
+#[no_mangle]
+pub extern "C" fn create_odrl_world(odrl: *const c_char) -> i64 {
+    if odrl.is_null() {
+        return -1;
+    }
+
+    let odrl = unsafe { CStr::from_ptr(odrl).to_string_lossy().into_owned() };
+    let result = ffi::Engine::create_odrl_world(odrl);
+    result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        let
+        create_odrl_world();
     }
 }
+
