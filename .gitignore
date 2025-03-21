@@ -8,3 +8,6 @@
 target/
 
 bindings/ffi/libs/
+bindings/ffi/src/
+bindings/ffi/target/
+bindings/ffi/main
