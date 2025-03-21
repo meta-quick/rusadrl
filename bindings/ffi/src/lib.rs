@@ -26,12 +26,21 @@ the library.
 */
 use std::ffi::{CString, CStr};
 use std::os::raw::c_char;
+use std::ptr::null_mut;
+use std::str::FromStr;
+use iref::IriBuf;
 
+fn to_iri(s: &str) -> Option<IriBuf> {
+    IriBuf::from_str(s).ok()
+}
 
 mod ffi {
     use std::borrow::BorrowMut;
+    use std::ptr::null_mut;
     use tokio::runtime::Runtime;
     use rusadrl::{CONFIG, odrl_loader::OdrlLoader};
+    use rusadrl::model::policy::{OdrlRequest, PolicyEngine};
+    use rusadrl::model::stateworld::{StateWorld, GLOBAL_WORLD_CACHE};
 
     pub struct Engine;
 
@@ -42,7 +51,7 @@ mod ffi {
             config.set_verbose(verbose);
         }
 
-        pub fn create_odrl_world(odrl: String) -> i64 {
+        pub fn create_odrl_world(odrl: String) ->  *mut i64 {
             let rt = Runtime::new().unwrap();
             let policy = rt.block_on(async {
                 let doc = OdrlLoader::load_json("http://www.w3.org/ns/odrl/2".to_string(),odrl);
@@ -61,12 +70,42 @@ mod ffi {
             });
 
             if policy.is_err() {
-                return -1;
+                return null_mut();
             }
 
             //return policy into raw pointer
             let policy = policy.unwrap();
-            Box::into_raw(Box::new(policy)) as i64
+            Box::into_raw(Box::new(policy)) as  *mut i64
+        }
+
+
+        pub fn policy_evaluate(handle: *mut i64, req: OdrlRequest) -> i32 {
+            //convert odrl_world into *mut i64
+            if handle.is_null() {
+                return -1;
+            }
+            let odrl = unsafe {
+                &mut *(handle as *mut rusadrl::model::policy::PolicyUnion)
+            };
+
+            //find world
+            let mut iri = PolicyEngine::find_world_key(odrl);
+            if iri.is_none() {
+                return -1;
+            }
+            let mut cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+            let world = cache.find_world(iri.unwrap().as_str());
+            if world.is_none() {
+                return -1;
+            }
+            let mut world = world.unwrap();
+
+            let result = PolicyEngine::eval(world,odrl,&req);
+
+            if result.is_err() {
+                return -1;
+            }
+            return result.unwrap() as i32;
         }
 
         pub fn delete_odrl_world(ptr: *mut i64) {
@@ -95,9 +134,9 @@ pub extern "C" fn delete_odrl_world(ptr: *mut i64) -> i32 {
 
 
 #[no_mangle]
-pub extern "C" fn create_odrl_world(odrl: *const c_char) -> i64 {
+pub extern "C" fn create_odrl_world(odrl: *const c_char) ->  *mut i64 {
     if odrl.is_null() {
-        return -1;
+        return null_mut();
     }
 
     let odrl = unsafe { CStr::from_ptr(odrl).to_string_lossy().into_owned() };
@@ -107,6 +146,7 @@ pub extern "C" fn create_odrl_world(odrl: *const c_char) -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use rusadrl::model::policy::OdrlRequest;
     use super::*;
     #[test]
     fn it_works() {
@@ -187,7 +227,16 @@ mod tests {
 
         //covert json to *const c_char
         let json = CString::new(json).unwrap();
-        create_odrl_world(json.as_c_str().as_ptr());
+        let handle = create_odrl_world(json.as_c_str().as_ptr());
+
+        //eval policy
+        let mut req = OdrlRequest::default();
+        req.set_action(to_iri("use"));
+        req.set_assignee(to_iri("http://example.com/liumazi"));
+        req.set_assigner(to_iri("http://example.com/liumazi"));
+        req.set_target(to_iri("http://example.com/liumazi"));
+        let result = ffi::Engine::policy_evaluate(handle,req);
+        println!("result: {:?}", result);
     }
 }
 

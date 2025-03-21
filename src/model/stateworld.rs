@@ -111,8 +111,8 @@ pub struct WorldCache {
 }
 
 impl WorldCache {
-    pub fn find_world(&self, iri: &str) -> Option<&StateWorld> {
-        self.cache.get(iri)
+    pub fn find_world(&mut self, iri: &str) -> Option<&mut StateWorld> {
+        self.cache.get_mut(iri)
     }
     pub fn add_world(&mut self, iri: &str, world: StateWorld) {
         self.cache.insert(iri.to_string(), world);

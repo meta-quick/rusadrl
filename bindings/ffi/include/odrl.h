@@ -18,6 +18,6 @@ int32_t enable_verbose(int32_t verbose);
 
 int32_t delete_odrl_world(int64_t *ptr);
 
-int64_t create_odrl_world(const char *odrl);
+int64_t *create_odrl_world(const char *odrl);
 
 #endif  /* _ODRL_ */

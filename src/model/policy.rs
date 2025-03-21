@@ -16,6 +16,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+use std::str::FromStr;
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::action::{Action, ActionInferencer, ActionType};
@@ -112,7 +113,7 @@ pub enum PolicyUnion {
     Ticket(Ticket),
 }
 
-#[derive(Debug,Default,Builder,Clone)]
+#[derive(Debug,Default,Builder,Setter,GetterMut,Clone)]
 pub struct OdrlRequest{
     pub action: Option<IriBuf>,
     pub assignee: Option<IriBuf>,
@@ -155,7 +156,6 @@ impl OdrlRequest {
         }
     }
 }
-
 
 impl Evaluator for Agreement  {
     fn eval(&self,world: &mut StateWorld,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
@@ -378,7 +378,7 @@ impl Evaluator for Agreement  {
        for inherit in inheritFrom {
            let inherit_policy = world.get_policy(inherit.to_string());
            if let Some(inherit_policy) = inherit_policy {
-               let result = PolicyEngine::eval(world,inherit_policy,req);
+               let result = PolicyEngine::eval(world,&inherit_policy,req);
                if let Ok(true) = result {
                    return Ok(true);
                }
@@ -611,7 +611,7 @@ impl Evaluator for Offer {
         for inherit in inheritFrom {
             let inherit_policy = world.get_policy(inherit.to_string());
             if let Some(inherit_policy) = inherit_policy {
-                let result = PolicyEngine::eval(world,inherit_policy,req);
+                let result = PolicyEngine::eval(world,&inherit_policy,req);
                 if let Ok(true) = result {
                     return Ok(true);
                 }
@@ -840,7 +840,7 @@ impl Evaluator for Set {
         for inherit in inheritFrom {
             let inherit_policy = world.get_policy(inherit.to_string());
             if let Some(inherit_policy) = inherit_policy {
-                let result = PolicyEngine::eval(world,inherit_policy,req);
+                let result = PolicyEngine::eval(world,&inherit_policy,req);
                 if let Ok(true) = result {
                     return Ok(true);
                 }
@@ -1073,7 +1073,7 @@ impl Evaluator for Privacy {
         for inherit in inheritFrom {
             let inherit_policy = world.get_policy(inherit.to_string());
             if let Some(inherit_policy) = inherit_policy {
-                let result = PolicyEngine::eval(world,inherit_policy,req);
+                let result = PolicyEngine::eval(world,&inherit_policy,req);
                 if let Ok(true) = result {
                     return Ok(true);
                 }
@@ -1306,7 +1306,7 @@ impl Evaluator for Request {
         for inherit in inheritFrom {
             let inherit_policy = world.get_policy(inherit.to_string());
             if let Some(inherit_policy) = inherit_policy {
-                let result = PolicyEngine::eval(world,inherit_policy,req);
+                let result = PolicyEngine::eval(world,&inherit_policy,req);
                 if let Ok(true) = result {
                     return Ok(true);
                 }
@@ -1550,7 +1550,7 @@ impl Evaluator for Assert {
         for inherit in inheritFrom {
             let inherit_policy = world.get_policy(inherit.to_string());
             if let Some(inherit_policy) = inherit_policy {
-                let result = PolicyEngine::eval(world,inherit_policy,req);
+                let result = PolicyEngine::eval(world,&inherit_policy,req);
                 if let Ok(true) = result {
                     return Ok(true);
                 }
@@ -1783,7 +1783,7 @@ impl Evaluator for Ticket {
         for inherit in inheritFrom {
             let inherit_policy = world.get_policy(inherit.to_string());
             if let Some(inherit_policy) = inherit_policy {
-                let result = PolicyEngine::eval(world,inherit_policy,req);
+                let result = PolicyEngine::eval(world,&inherit_policy,req);
                 if let Ok(true) = result {
                     return Ok(true);
                 }
@@ -1800,7 +1800,33 @@ impl Evaluator for Ticket {
 pub struct PolicyEngine;
 
 impl PolicyEngine {
-    pub fn eval(world: &mut StateWorld, policy: PolicyUnion,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
+    pub fn find_world_key(policy: &PolicyUnion) -> Option<IriBuf> {
+        match policy {
+            PolicyUnion::Privacy(p) => {
+                return p.policy.get_uid().clone();
+            }
+            PolicyUnion::Request(r) => {
+                return  r.policy.get_uid().clone();
+            }
+            PolicyUnion::Assert(a) => {
+                return  a.policy.get_uid().clone();
+            }
+            PolicyUnion::Set(s) => {
+                return  s.policy.get_uid().clone();
+            }
+            PolicyUnion::Agreement(p) => {
+                return  p.policy.get_uid().clone();
+            }
+            PolicyUnion::Offer(o) => {
+                return  o.policy.get_uid().clone();
+            }
+            PolicyUnion::Ticket(s) => {
+                return  s.policy.get_uid().clone();
+            }
+        }
+    }
+
+    pub fn eval(world: &mut StateWorld, policy: &PolicyUnion,req: &OdrlRequest) -> Result<bool, anyhow::Error> {
         match policy {
             PolicyUnion::Privacy(p) => {
                 return  p.eval(world,req);

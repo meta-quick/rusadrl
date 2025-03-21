@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod config;
-mod model;
+pub mod model;
 mod traits;
 mod reference;
 mod linkdata;

@@ -23,6 +23,8 @@ crate-type = ["cdylib"]
 [dependencies]
 rusadrl = { path = "../.." }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+static-iref = { version = "3.0"}
+iref = { version = "3.2"}
 
 [build-dependencies]
 cbindgen = "0.28"
