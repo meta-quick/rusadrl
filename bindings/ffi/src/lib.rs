@@ -37,10 +37,9 @@ mod ffi {
 
     impl Engine {
         pub fn set_verbose(verbose: bool) {
-            println!("set_verbose: {}", verbose);
             let mut config = CONFIG.lock().unwrap();
             let config = config.borrow_mut();
-            config.set_verbose(true);
+            config.set_verbose(verbose);
         }
 
         pub fn create_odrl_world(odrl: String) -> i64 {
@@ -111,8 +110,84 @@ mod tests {
     use super::*;
     #[test]
     fn it_works() {
-        let
-        create_odrl_world();
+        let json = r#"{
+	"@context": [
+		"https://www.w3.org/ns/odrl.jsonld",
+		{
+			"title": "https://datasafe.io/ds/1.1/title",
+			"creator": "https://datasafe.io/ds/1.1/creator",
+			"dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
+		}
+	],
+	"type": "Agreement",
+	"uid": "http://abc.tds/policy/demo/1",
+	"assigner": {
+		"uid": "https://aa/bb/gaosg",
+		"type": "Party",
+		"assignerOf": "http://aaa/a",
+		"refinement": {
+            "dataType": "integer",
+            "unit": "m",
+            "leftOperand": "dateTime",
+            "operator": "lt",
+            "rightOperand": "abc"
+		}
+	},
+	"assignee": {
+		"uid": "https://aa/gaosg",
+		"type": "PartyCollection",
+		"source": "https://aa.com/aaa",
+		"refinement": {
+            "dataType": "integer",
+            "unit": "m",
+            "leftOperand": "dateTime",
+            "operator": "lt",
+            "rightOperand": "abc"
+        }
+	},
+    "target": "http://ab/a",
+	"title": "Policy 1",
+	"conflict": "Perm",
+	"inheritFrom": ["http://a.com/abc", "http://a.com/abc"],
+	"profile": "http://a.com/abc",
+	"permission": [{
+			"action": "use",
+			"assignee": "http://abc/liumazi",
+			"constraint": {
+				"dataType": "integer",
+				"unit": "m",
+				"leftOperand": "dateTime",
+				"operator": "lt",
+				"rightOperand": "abc"
+			}
+		},
+		{
+			"action": "use",
+			"constraint": {
+				"type": "LogicalConstraint",
+				"uid": "http://example.com/constraint/1",
+				"operator": "and",
+				"constraint": [{
+						"leftOperand": "dateTime",
+						"operator": "gt",
+						"rightOperandReference": "http://a/a"
+					},
+					{
+						"leftOperand": "dateTime",
+						"operator": "lt",
+						"rightOperand": "2025-12-31"
+					}
+				]
+			}
+		}
+	]
+}"#;
+
+        enable_verbose(1);
+
+        //covert json to *const c_char
+        let json = CString::new(json).unwrap();
+        create_odrl_world(json.as_c_str().as_ptr());
     }
 }
 

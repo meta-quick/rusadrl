@@ -99,7 +99,6 @@ impl Loader for HttpLoader {
         // Check if the IRI is intercepted
         if let Some((rest,path)) = self.intercept(&iri) {
             let path = path.join(rest);
-            println!("intercepting {}", path.display());
             let content = std::fs::read_to_string(path).map_err(|e| LoadError::new(iri.clone(), e) );
             if let Ok(content) = content {
                 let result  = json_syntax::Value::parse_str(&content);
@@ -114,8 +113,6 @@ impl Loader for HttpLoader {
                 }
             }
         }
-
-        println!("request http");
 
         // Fetch the document using HTTP
         let response = self.client.get(iri.as_str()).send().await;
