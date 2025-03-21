@@ -28,6 +28,7 @@ use json_ld_core::Node;
 use reqwest::Proxy;
 use serde_json::Value;
 use static_iref::iri;
+use crate::config;
 use crate::linkdata::jsonld::{JsonLdAction, JsonLdAnyValue, JsonLdAsset, JsonLdConstraint, JsonLdConstraintOne, JsonLdDuty, JsonLdLogicConstraint, JsonLdOptionArray, JsonLdParser, JsonLdParty, JsonLdPermission, JsonLdPolicy, JsonLdProhibition};
 use crate::model::constraint::Constraint;
 use crate::model::constraint::LogicConstraint;
@@ -676,7 +677,7 @@ impl OdrlLoader {
 
         //Normalize permissions
         let permissions = policy.get_permission_mut();
-        for permission in  permissions {
+        if let Some(permission) = permissions {
             match permission {
                 JsonLdOptionArray::Single(permission) => {
                    //check permission level assigner
@@ -732,7 +733,7 @@ impl OdrlLoader {
 
         //Normalize obligations
         let obligations = policy.get_obligation_mut();
-        for obligation in  obligations {
+        if let Some(obligation) =  obligations {
             match obligation {
                 JsonLdOptionArray::Single(obligation) => {
                     //check obligation level assigner
@@ -777,7 +778,7 @@ impl OdrlLoader {
 
         //Normalize prohibitions
         let prohibitions = policy.get_prohibition_mut();
-        for prohibition in prohibitions {
+        if let Some(prohibition) = prohibitions {
             match prohibition {
                 JsonLdOptionArray::Single(prohibition) => {
                     //check prohibition level assigner
@@ -834,7 +835,15 @@ impl OdrlLoader {
                 let json_string = compacted.to_string();
                 let v: Value = serde_json::from_str(&json_string).unwrap();
                 let pretty = serde_json::to_string_pretty(&v).unwrap();
-                println!("{}", pretty);
+
+                {
+                    let config = config::CONFIG.lock().unwrap();
+                    if config.verbose {
+                        println!(">>--------------------Pretty printed JSON-LD Expanded Document-----------------------------<<");
+                        println!("{}", pretty);
+                        println!(">>--------------------Pretty printed JSON-LD end-----------------------------<<");
+                    }
+                }
 
                 let policy =   serde_json::from_str::<JsonLdPolicy>(&json_string);
                 let policy = match policy {
@@ -847,7 +856,16 @@ impl OdrlLoader {
                 //Normalize
                 let mut policy = policy;
                 let _ = OdrlLoader::normalize(&mut policy).await;
-                // println!("{:#?}",policy);
+
+                {
+                    let config = config::CONFIG.lock().unwrap();
+                    if config.verbose {
+                        println!(">>--------------------ODRL AST TOKEN TREE-----------------------------<<");
+                        println!("{:#?}",policy);
+                        println!(">>--------------------ODRL AST TOKEN end-----------------------------<<");
+                    }
+                }
+
                 Ok(policy)
             }
             Err(err) => {
@@ -951,21 +969,25 @@ impl OdrlLoader {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+    use crate::config::Config;
     use super::*;
     #[tokio::test]
     pub async fn test() {
+        use std::borrow::BorrowMut;
         let path = "src/data/sample.jsonld";
+
+        {
+            let mut config = config::CONFIG.lock().unwrap();
+            let config = config.borrow_mut();
+            config.set_verbose(false);
+        }
+
         let doc = OdrlLoader::load("http://www.w3.org/ns/odrl/2".to_string(), path.to_string());
         let doc = doc.await;
         let expanded = doc.unwrap();
 
         let policy = OdrlLoader::parse(expanded).await;
         let policy = OdrlLoader::compile(&mut policy.unwrap()).await;
-
-        if let Ok(policy) = policy {
-            if let PolicyUnion::Agreement(agreement) = policy {
-                println!("{agreement:#?}");
-            }
-        }
     }
 }

@@ -98,26 +98,20 @@ impl Loader for HttpLoader {
         // Check if the IRI is intercepted
         if let Some((rest,path)) = self.intercept(&iri) {
             let path = path.join(rest);
-            //print current path, and work directory
-            println!("path: {:?}", path.clone());
-            println!("work directory: {:?}", std::env::current_dir());
 
-            let x = std::fs::read_to_string(path.clone());
-            println!("{:?}", x);
-
-            let content = std::fs::read_to_string("/Users/gaosg/Projects/rusadrl/ordls/odrl.jsonld").map_err(|e| LoadError::new(iri.clone(), e) )?;
-            let (doc, _) = json_syntax::Value::parse_str(&content)
-                .map_err(|e| LoadError::new(url.to_owned(), Error::Parse(e)))?;
-
-            let document = RemoteDocument::new(Some(url.to_owned()), Some("application/ld+json".parse().unwrap()), doc);
-
-            // Cache the document
-            {
-                let mut cache = self.cache.lock().unwrap();
-                cache.insert(iri.clone(), document.clone());
+            let content = std::fs::read_to_string(path).map_err(|e| LoadError::new(iri.clone(), e) );
+            if let Ok(content) = content {
+                let result  = json_syntax::Value::parse_str(&content);
+                if let Ok((doc,_)) = result {
+                    let document = RemoteDocument::new(Some(url.to_owned()), Some("application/ld+json".parse().unwrap()), doc);
+                    // Cache the document
+                    {
+                        let mut cache = self.cache.lock().unwrap();
+                        cache.insert(iri.clone(), document.clone());
+                    }
+                    return Ok(document);
+                }
             }
-
-            return Ok(document);
         }
 
         // Fetch the document using HTTP

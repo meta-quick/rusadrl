@@ -11,8 +11,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-mod config;
-mod model;
-mod traits;
-mod reference;
-mod linkdata;
+
+use once_cell::sync::Lazy;
+use std::sync::{Arc, Mutex};
+
+#[derive(Debug)]
+pub struct Config {
+    pub verbose: bool,
+}
+
+impl Config {
+    pub fn set_verbose(&mut self, verbose: bool) {
+        self.verbose = verbose;
+    }
+}
+
+pub static CONFIG: Lazy<Arc<Mutex<Config>>> = Lazy::new(|| {
+    Arc::new(Mutex::new(Config {
+        verbose: false,
+    }))
+});
+
