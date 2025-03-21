@@ -19,8 +19,10 @@
 
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use iref::IriBuf;
-use lombok::{Builder};
+use lombok::{Builder, Getter, GetterMut, Setter};
+use once_cell::sync::Lazy;
 use crate::model::asset::{AssetCollection};
 use crate::model::constraint_right_operand::ConstraintRightOperand;
 use crate::model::policy::{PolicyUnion};
@@ -54,6 +56,7 @@ impl StateWorld {
     pub fn add_state(&mut self, state: &str, value: &str) {
         self.state.insert(state.to_string(), value.to_string());
     }
+
     pub fn remove_state(&mut self, state: &str) {
         self.state.remove(state);
     }
@@ -102,15 +105,37 @@ impl StateWorld {
     }
 }
 
-type Cache = HashMap<String, StateWorld>;
-// static GLOBAL_WORLD_CACHE: Lazy<Mutex<Cache>> = Lazy::new(|| Mutex::new(HashMap::new()));
-//
-// pub fn get_global_world(iri: &str) -> Option<StateWorld> {
-//     let mut cache = GLOBAL_WORLD_CACHE.lock().unwrap();
-//     cache.get(iri).cloned()
-// }
-//
-// pub fn add_global_world(iri: &str, world: StateWorld) {
-//     let mut cache = GLOBAL_WORLD_CACHE.lock().unwrap();
-//     cache.insert(iri.to_string(), world);
-// }
+#[derive(Debug,Builder,Clone,Setter,Getter,GetterMut)]
+pub struct WorldCache {
+    cache: HashMap<String, StateWorld>,
+}
+
+impl WorldCache {
+    pub fn find_world(&self, iri: &str) -> Option<&StateWorld> {
+        self.cache.get(iri)
+    }
+    pub fn add_world(&mut self, iri: &str, world: StateWorld) {
+        self.cache.insert(iri.to_string(), world);
+    }
+    pub fn remove_world(&mut self, iri: &str) {
+        self.cache.remove(iri);
+    }
+    pub fn update_world(&mut self, iri: &str, world: StateWorld) {
+        self.cache.insert(iri.to_string(), world);
+    }
+
+    pub fn clear_world(&mut self) {
+        self.cache.clear();
+    }
+}
+
+pub static GLOBAL_WORLD_CACHE: Lazy<Arc<Mutex<WorldCache>>> = Lazy::new(|| {
+    Arc::new(Mutex::new( {
+        WorldCache {
+            cache: HashMap::new(),
+        }
+    }))
+});
+
+
+

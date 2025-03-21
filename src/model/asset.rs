@@ -75,9 +75,22 @@ impl AssetInferencer {
                 }
 
                 /*
-                 * PartOf:
-                 * 1. Check if candidate is in partOf of the asset
+                 * candidate is a sub asset of asset, basic logic is
+                 * candidate.partOf.contains(asset.uid)
+                 * partOf is not supported yet
                  */
+                let partOf = candidate.get_partOf().clone();
+                if let None = partOf {
+                    return Ok(false);
+                }
+                let partOf = partOf.unwrap();
+                for part in partOf {
+                    let part = part.as_str();
+                    if asset_uid == part {
+                        return Ok(true);
+                    }
+                }
+                return Ok(false);
             }
             AssetUnion::AssetCollection(collection) => {
                 let collection_uid = collection.get_source();
@@ -94,7 +107,24 @@ impl AssetInferencer {
                 let candidate_uid = candidate_uid.clone().unwrap();
                 let candidate_uid = candidate_uid.as_str();
 
-                if collection_uid == candidate_uid {
+                let mut find_partOf = false;
+                if collection_uid != candidate_uid {
+                    //check partOf
+                    let partOf = candidate.get_partOf().clone();
+                    if let None = partOf {
+                        return Ok(false);
+                    }
+                    let partOf = partOf.unwrap();
+                    for part in partOf {
+                        let part = part.as_str();
+                        if collection_uid == part {
+                            find_partOf = true;
+                            break;
+                        }
+                    }
+                }
+
+                if collection_uid == candidate_uid || find_partOf {
                     //check refinement
                     let refinement = collection.get_refinement();
                     if let Some(refinement) = refinement {

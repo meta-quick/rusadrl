@@ -47,6 +47,7 @@ use crate::model::permission::Permission;
 use crate::model::policy::{Agreement, PolicyUnion};
 use crate::model::prohibition::Prohibition;
 use crate::model::rule::Rule;
+use crate::model::stateworld::{StateWorld, GLOBAL_WORLD_CACHE};
 
 #[derive(Debug)]
 pub struct OdrlLoader;
@@ -272,6 +273,17 @@ fn compile_party(json: &JsonLdParty) -> Option<PartyUnion> {
                 if json.get_refinement().is_some() {
                     let refinement = json.get_refinement().clone().unwrap();
                     party.set_refinement(compile_constraint(&refinement).ok());
+                }
+
+                //Update state world
+                let mut world_cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+                {
+                    //TODO: fixme
+                    // let world = world_cache.find_world("");
+                    // if world.is_some() {
+                    //     let world = world.unwrap();
+                    //     world.add_party(party.get_uid().clone().unwrap().as_str(),party.clone());
+                    // }
                 }
 
                 return Some(PartyUnion::Party(party));
@@ -887,7 +899,15 @@ impl OdrlLoader {
 
                 //copy policy uid to eval
                 let uid = policy.get_uid().clone();
-                eval.set_uid(IriBuf::new(uid).ok());
+                eval.set_uid(IriBuf::new(uid.clone()).ok());
+
+                //initialize world
+                let world = StateWorld::builder().uid(IriBuf::new(uid.clone()).ok()).build();
+                {
+                    //cache world
+                    let mut world_cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+                    world_cache.add_world(uid.as_str(),world);
+                }
 
                 //check and copy assignee
                 let assignee = policy.get_assignee().clone();
@@ -988,6 +1008,7 @@ mod tests {
         let expanded = doc.unwrap();
 
         let policy = OdrlLoader::parse(expanded).await;
+
         let policy = OdrlLoader::compile(&mut policy.unwrap()).await;
     }
 }
