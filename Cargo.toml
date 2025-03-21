@@ -13,9 +13,14 @@
 # limitations under the License.
 
 [package]
-name = "rusodrl"
+name = "rusadrl"
 version = "0.1.0"
 edition = "2021"
+
+[workspace]
+members = [
+    "bindings/ffi"
+]
 
 [dependencies]
 thiserror = { version = "2" }
@@ -41,6 +46,11 @@ chrono = "0.4.39"
 once_cell = "1.20.2"
 rdf-types = "0.22"
 xsd-types = "0.9"
+
+[profile.release]
+opt-level = 3
+debug = true
+panic = 'abort'
 
 [profile.dev]
 opt-level = 0

@@ -1000,7 +1000,7 @@ mod tests {
         {
             let mut config = config::CONFIG.lock().unwrap();
             let config = config.borrow_mut();
-            config.set_verbose(false);
+            config.set_verbose(true);
         }
 
         let doc = OdrlLoader::load("http://www.w3.org/ns/odrl/2".to_string(), path.to_string());
