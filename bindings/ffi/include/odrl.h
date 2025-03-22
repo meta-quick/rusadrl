@@ -20,4 +20,17 @@ int32_t delete_odrl_world(int64_t *ptr);
 
 int64_t *create_odrl_world(const char *odrl);
 
+int32_t eval_odrl_world(int64_t *handle,
+                        const char *action,
+                        const char *target,
+                        const char *assigner,
+                        const char *assignee);
+
+int32_t update_odrl_world(int64_t *handle,
+                          const char *key,
+                          const char *value);
+
+const char *fetch_odrl_world(int64_t *handle,
+                             const char *value);
+
 #endif  /* _ODRL_ */

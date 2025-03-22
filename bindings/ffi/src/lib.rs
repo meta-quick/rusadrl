@@ -144,6 +144,21 @@ pub extern "C" fn create_odrl_world(odrl: *const c_char) ->  *mut i64 {
     result
 }
 
+#[no_mangle]
+pub extern "C" fn eval_odrl_world(handle: *mut i64,action: *const c_char,target: *const c_char,assigner: *const c_char,assignee: *const c_char) ->  i32 {
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn update_odrl_world(handle: *mut i64,key: *const c_char,value: *const c_char) ->  i32 {
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn fetch_odrl_world(handle: *mut i64,value: *const c_char) ->  *const c_char {
+    null_mut()
+}
+
 #[cfg(test)]
 mod tests {
     use rusadrl::model::policy::OdrlRequest;
