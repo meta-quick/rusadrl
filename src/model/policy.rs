@@ -210,11 +210,10 @@ impl Evaluator for Agreement  {
 
                 //do assigner verification
                 let candidate_assigner = candidate_assigner.clone();
-                let policy_assigner = permission.get_assigner().clone();
                 let mut assigner_verified = false;
                 let assigner = permission.get_assigner();
                 if candidate_assigner.is_some() && assigner.is_some() {
-                    let union = policy_assigner.unwrap();
+                    let union = assigner.clone().unwrap();
                     let ret = PartyInferencer::infer_party(world,&union,&candidate_assigner.unwrap());
                     if let Ok(true) = ret {
                         assigner_verified = true;

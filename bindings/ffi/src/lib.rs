@@ -337,62 +337,65 @@ mod tests {
 		}
 	],
 	"type": "Agreement",
-	"uid": "http://abc.tds/policy/demo/1",
+	"uid": "https://datasate.ids/aggreement/00001",
 	"assigner": {
-		"uid": "https://aa/bb/gaosg",
+		"uid": "https://datasate.ids/users/gaosg",
 		"type": "Party",
-		"assignerOf": "http://aaa/a",
+		"assignerOf": "https://datasate.ids/dataset/00001",
 		"refinement": {
-            "dataType": "integer",
+            "dataType": "dateTime",
             "unit": "m",
             "leftOperand": "dateTime",
             "operator": "lt",
-            "rightOperand": "abc"
+            "rightOperand": "2025-12-31"
 		}
 	},
 	"assignee": {
-		"uid": "https://aa/gaosg",
+		"uid": "https://datasate.ids/usercollection/liumazi",
 		"type": "PartyCollection",
-		"source": "https://aa.com/aaa",
+		"source": "https://datasate.ids/usercollection/liumazi",
 		"refinement": {
-            "dataType": "integer",
+            "dataType": "dateTime",
             "unit": "m",
             "leftOperand": "dateTime",
             "operator": "lt",
-            "rightOperand": "abc"
+            "rightOperand": "2025-12-31"
         }
 	},
-    "target": "http://ab/a",
+    "target": "https://datasate.ids/llm/dataset/0001",
 	"title": "Policy 1",
 	"conflict": "Perm",
-	"inheritFrom": ["http://a.com/abc", "http://a.com/abc"],
-	"profile": "http://a.com/abc",
+	"inheritFrom": [],
+	"profile": "https://datasate.ids/profiles/0001",
 	"permission": [{
 			"action": "use",
-			"assignee": "http://abc/liumazi",
+			"assignee": "https://datasate.ids/usercollection/liumazi",
 			"constraint": {
-				"dataType": "integer",
+				"dataType": "dateTime",
 				"unit": "m",
 				"leftOperand": "dateTime",
 				"operator": "lt",
-				"rightOperand": "abc"
+				"rightOperand": "2025-12-31"
 			}
 		},
 		{
 			"action": "use",
 			"constraint": {
 				"type": "LogicalConstraint",
-				"uid": "http://example.com/constraint/1",
+				"uid": "https://datasate.ids/users/gaosg",
 				"operator": "and",
 				"constraint": [{
+				        "unit": "cm",
+				        "dataType": "dateTime",
 						"leftOperand": "dateTime",
 						"operator": "gt",
-						"rightOperandReference": "http://a/a"
+						"rightOperand": "2024-12-31"
 					},
 					{
+					    "dataType": "dateTime",
 						"leftOperand": "dateTime",
 						"operator": "lt",
-						"rightOperand": "2025-12-31"
+						"rightOperand": "2024-12-31"
 					}
 				]
 			}
@@ -408,10 +411,10 @@ mod tests {
 
         //eval policy
         let mut req = OdrlRequest::default();
-        req.set_action(to_iri("use"));
-        req.set_assignee(to_iri("http://example.com/liumazi"));
-        req.set_assigner(to_iri("http://example.com/liumazi"));
-        req.set_target(to_iri("http://example.com/liumazi"));
+        req.set_action(to_iri("http://www.w3.org/ns/odrl/2/use"));
+        req.set_assignee(to_iri("https://datasate.ids/usercollection/liumazi"));
+        req.set_assigner(to_iri("https://datasate.ids/users/gaosg"));
+        req.set_target(to_iri("https://datasate.ids/llm/dataset/0001"));
         let result = ffi::Engine::policy_evaluate(handle,req);
         println!("result: {:?}", result);
     }

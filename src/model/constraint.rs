@@ -87,7 +87,11 @@ impl LogicEval for Constraint {
 
         let operator = self.operator.as_ref().unwrap();
         let left = self.leftOperand.as_ref().unwrap();
-        let right = self.rightOperand.as_ref().unwrap();
+        let right = self.rightOperand.as_ref();
+        if right.is_none() {
+            return Err(anyhow::Error::msg("No right operand defined"));
+        }
+        let right = right.unwrap();
 
         let left_value = left.value(&mut world).unwrap();
         let right_value = right.value(&mut world).unwrap();

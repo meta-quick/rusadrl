@@ -177,7 +177,7 @@ pub struct  JsonLdConstraint{
     #[serde(rename = "@id")]
     uid: Option<String>,
 
-    #[serde(rename = "http://www.w3.org/ns/odrl/2/dataType")]
+    #[serde(rename = "http://www.w3.org/ns/odrl/2/datatype")]
     data_type: Option<JsonLdDataType>,
 
     #[serde(rename = "http://www.w3.org/ns/odrl/2/unit")]

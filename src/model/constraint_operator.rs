@@ -17,9 +17,11 @@
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
+use std::str::FromStr;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::data_type::DataType;
 use crate::reference::types::OperandValue;
+use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
 
 #[derive(Debug,Clone)]
 #[allow(non_camel_case_types)]
@@ -48,6 +50,21 @@ pub enum ConstraintOperator {
     isAnyOf,
     //http://www.w3.org/ns/odrl/2/isNoneOf
     isNoneOf
+}
+
+fn parse_datetime(input: &str) -> i64 {
+    let date = NaiveDateTime::parse_from_str(input, "%Y-%m-%d %H:%M:%S");
+    if let Ok(date) = date {
+        return Utc.from_utc_datetime(&date).timestamp_millis()
+    } else {
+        let date =  NaiveDate::parse_from_str(input, "%Y-%m-%d");
+        if let Ok(date) = date {
+            let datetime = date.and_hms(0, 0, 0);
+            return Utc.from_utc_datetime(&datetime).timestamp_millis()
+        }else {
+            0
+        }
+    }
 }
 
 impl TryFrom<&str> for ConstraintOperator {
@@ -127,14 +144,14 @@ impl ConstraintOperator {
                let right = right.get_sval().unwrap();
                let left = left.parse::<i64>().unwrap();
                let right = right.parse::<i64>().unwrap();
-               left == right
+               left > right
            },
            DataType::Float => {
                let left = left.get_sval().unwrap();
                let right = right.get_sval().unwrap();
                let left = left.parse::<f64>().unwrap();
                let right = right.parse::<f64>().unwrap();
-               if (left - right).abs() < std::f64::EPSILON {
+               if left - right > std::f64::EPSILON {
                    return true;
                }
                false
@@ -143,15 +160,16 @@ impl ConstraintOperator {
                let left = left.get_sval().unwrap();
                let right = right.get_sval().unwrap();
                let left = left.parse::<i64>().unwrap();
-               let right = right.parse::<i64>().unwrap();
-               left == right
+               let right = parse_datetime(right.as_str());
+               left > right
            },
+           DataType::DateTime |
            DataType::Time => {
                let left = left.get_sval().unwrap();
                let right = right.get_sval().unwrap();
                let left = left.parse::<i64>().unwrap();
-               let right = right.parse::<i64>().unwrap();
-               left == right
+               let right = parse_datetime(right.as_str());
+               left > right
            }
            _ => false
         }
@@ -194,7 +212,7 @@ impl ConstraintOperator {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left == right
             }
         }
@@ -221,14 +239,15 @@ impl ConstraintOperator {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left >= right
             },
+            DataType::DateTime |
             DataType::Time => {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left >= right
             }
             _ => {
@@ -256,14 +275,22 @@ impl ConstraintOperator {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left < right
             }
             DataType::Time => {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
+                left < right
+            }
+            DataType::DateTime => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
+
                 left < right
             }
             _ => {
@@ -291,14 +318,21 @@ impl ConstraintOperator {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left <= right
             }
             DataType::Time => {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
+                left <= right
+            }
+            DataType::DateTime => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left <= right
             }
             _ => {
@@ -332,14 +366,21 @@ impl ConstraintOperator {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left != right
             }
             DataType::Time => {
                 let left = left.get_sval().unwrap();
                 let right = right.get_sval().unwrap();
                 let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
+                left != right
+            }
+            DataType::DateTime => {
+                let left = left.get_sval().unwrap();
+                let right = right.get_sval().unwrap();
+                let left = left.parse::<i64>().unwrap();
+                let right = parse_datetime(right.as_str());
                 left != right
             }
             _ => {
@@ -487,5 +528,22 @@ impl TryFrom<&str> for ConstraintLogicOperator {
             "andsequence" => Ok(ConstraintLogicOperator::andSequence),
             _ => Err(anyhow::anyhow!("Invalid operator: {}", value)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{NaiveDate, NaiveDateTime};
+
+    #[test]
+    fn test_parse_operator() {
+        let now = chrono::Utc::now().timestamp_millis();
+
+        let date = NaiveDate::parse_from_str("2025-3-24 00:00:00", "%Y-%m-%d %H:%M:%S");
+        let date = date.unwrap().and_hms(0,0,0).timestamp_millis();
+
+        println!("{:?}", date);
+        println!("{:?}", now);
+        println!("{:?}", now - date);
     }
 }
