@@ -276,7 +276,7 @@ fn compile_party(json: &JsonLdParty) -> Option<PartyUnion> {
                 }
 
                 //Update state world
-                let mut world_cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+                // let mut world_cache = GLOBAL_WORLD_CACHE.;
                 {
                     //TODO: fixme
                     // let world = world_cache.find_world("");
@@ -911,7 +911,7 @@ impl OdrlLoader {
                 let world = StateWorld::builder().uid(IriBuf::new(uid.clone()).ok()).build();
                 {
                     //cache world
-                    let mut world_cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+                    let world_cache = GLOBAL_WORLD_CACHE.clone();
                     world_cache.add_world(uid.as_str(),world);
                 }
 

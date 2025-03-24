@@ -20,3 +20,13 @@ mod linkdata;
 
 pub use config::*;
 pub use linkdata::odrl_loader;
+
+pub fn handle_to_policy<'a>(handle: *mut i64) -> Option<&'a mut crate::model::policy::PolicyUnion> {
+    if handle.is_null() {
+        return None;
+    }
+    let odrl = unsafe {
+        &mut *(handle as *mut crate::model::policy::PolicyUnion)
+    };
+    return Some(odrl);
+}

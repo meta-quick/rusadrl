@@ -1,0 +1,89 @@
+package main
+
+import "github.com/meta-quick/godrl/pkg/odrl"
+
+func main() {
+	jsonld := `
+{
+	"@context": [
+		"https://www.w3.org/ns/odrl.jsonld",
+		{
+			"title": "https://datasafe.io/ds/1.1/title",
+			"creator": "https://datasafe.io/ds/1.1/creator",
+			"dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
+		}
+	],
+	"type": "Agreement",
+	"uid": "http://abc.tds/policy/demo/1",
+	"assigner": {
+		"uid": "https://aa/bb/gaosg",
+		"type": "Party",
+		"assignerOf": "http://aaa/a",
+		"refinement": {
+            "dataType": "integer",
+            "unit": "m",
+            "leftOperand": "dateTime",
+            "operator": "lt",
+            "rightOperand": "abc"
+		}
+	},
+	"assignee": {
+		"uid": "https://aa/gaosg",
+		"type": "PartyCollection",
+		"source": "https://aa.com/aaa",
+		"refinement": {
+            "dataType": "integer",
+            "unit": "m",
+            "leftOperand": "dateTime",
+            "operator": "lt",
+            "rightOperand": "abc"
+        }
+	},
+    "target": "http://ab/a",
+	"title": "Policy 1",
+	"conflict": "Perm",
+	"inheritFrom": ["http://a.com/abc", "http://a.com/abc"],
+	"profile": "http://a.com/abc",
+	"permission": [{
+			"action": "use",
+			"assignee": "http://abc/liumazi",
+			"constraint": {
+				"dataType": "integer",
+				"unit": "m",
+				"leftOperand": "dateTime",
+				"operator": "lt",
+				"rightOperand": "abc"
+			}
+		},
+		{
+			"action": "use",
+			"constraint": {
+				"type": "LogicalConstraint",
+				"uid": "http://example.com/constraint/1",
+				"operator": "and",
+				"constraint": [{
+						"leftOperand": "dateTime",
+						"operator": "gt",
+						"rightOperandReference": "http://a/a"
+					},
+					{
+						"leftOperand": "dateTime",
+						"operator": "lt",
+						"rightOperand": "2025-12-31"
+					}
+				]
+			}
+		}
+	]
+}
+    `
+
+	engine := odrl.NewEngine(false, jsonld)
+	defer engine.Close()
+
+	result := engine.Eval("use", "http://ab/a", "http://abc/liumazi", "http://abc/liumazi")
+	println(result)
+
+	engine.UpdateWorld("abc", "123")
+	engine.UpdateWorld("def", "456")
+}

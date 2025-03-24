@@ -31,6 +31,9 @@ int32_t update_odrl_world(int64_t *handle,
                           const char *value);
 
 const char *fetch_odrl_world(int64_t *handle,
-                             const char *value);
+                             const char *key);
+
+int32_t remove_odrl_world(int64_t *handle,
+                          const char *key);
 
 #endif  /* _ODRL_ */

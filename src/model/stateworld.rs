@@ -19,7 +19,9 @@
 
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
+use dashmap::DashMap;
+use dashmap::mapref::one::RefMut;
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use once_cell::sync::Lazy;
@@ -107,34 +109,33 @@ impl StateWorld {
 
 #[derive(Debug,Builder,Clone,Setter,Getter,GetterMut)]
 pub struct WorldCache {
-    cache: HashMap<String, StateWorld>,
+    cache: DashMap<String, StateWorld>,
 }
 
 impl WorldCache {
-    pub fn find_world(&mut self, iri: &str) -> Option<&mut StateWorld> {
+    pub fn find_world(&self, iri: &str) -> Option<RefMut<String, StateWorld>> {
         self.cache.get_mut(iri)
     }
-    pub fn add_world(&mut self, iri: &str, world: StateWorld) {
+    pub fn add_world(&self, iri: &str, world: StateWorld) {
         self.cache.insert(iri.to_string(), world);
     }
-    pub fn remove_world(&mut self, iri: &str) {
+    pub fn remove_world(&self, iri: &str) {
         self.cache.remove(iri);
     }
-    pub fn update_world(&mut self, iri: &str, world: StateWorld) {
+    pub fn update_world(&self, iri: &str, world: StateWorld) {
         self.cache.insert(iri.to_string(), world);
     }
 
-    pub fn clear_world(&mut self) {
+    pub fn clear_world(&self) {
         self.cache.clear();
     }
 }
 
-pub static GLOBAL_WORLD_CACHE: Lazy<Arc<Mutex<WorldCache>>> = Lazy::new(|| {
-    Arc::new(Mutex::new( {
+pub static GLOBAL_WORLD_CACHE: Lazy<Arc<WorldCache>> = Lazy::new(|| {
+    Arc::new(
         WorldCache {
-            cache: HashMap::new(),
-        }
-    }))
+            cache: DashMap::new(),
+    })
 });
 
 

@@ -24,11 +24,14 @@ the library.
 # How to build and install
 
 */
-use std::ffi::{CString, CStr};
+#![allow(dead_code)]
+
+use std::ffi::{CStr};
 use std::os::raw::c_char;
 use std::ptr::null_mut;
 use std::str::FromStr;
 use iref::IriBuf;
+use rusadrl::model::policy::OdrlRequest;
 
 fn to_iri(s: &str) -> Option<IriBuf> {
     IriBuf::from_str(s).ok()
@@ -36,11 +39,14 @@ fn to_iri(s: &str) -> Option<IriBuf> {
 
 mod ffi {
     use std::borrow::BorrowMut;
+    use std::ffi::{c_char, CStr, CString};
     use std::ptr::null_mut;
+    use std::str::FromStr;
+    use iref::IriBuf;
     use tokio::runtime::Runtime;
-    use rusadrl::{CONFIG, odrl_loader::OdrlLoader};
+    use rusadrl::{CONFIG, odrl_loader::OdrlLoader, handle_to_policy};
     use rusadrl::model::policy::{OdrlRequest, PolicyEngine};
-    use rusadrl::model::stateworld::{StateWorld, GLOBAL_WORLD_CACHE};
+    use rusadrl::model::stateworld::{GLOBAL_WORLD_CACHE};
 
     pub struct Engine;
 
@@ -89,18 +95,18 @@ mod ffi {
             };
 
             //find world
-            let mut iri = PolicyEngine::find_world_key(odrl);
+            let iri = PolicyEngine::find_world_key(odrl);
             if iri.is_none() {
                 return -1;
             }
-            let mut cache = GLOBAL_WORLD_CACHE.lock().unwrap();
+            let cache = GLOBAL_WORLD_CACHE.clone();
             let world = cache.find_world(iri.unwrap().as_str());
             if world.is_none() {
                 return -1;
             }
             let mut world = world.unwrap();
 
-            let result = PolicyEngine::eval(world,odrl,&req);
+            let result = PolicyEngine::eval(world.value_mut(),odrl,&req);
 
             if result.is_err() {
                 return -1;
@@ -116,6 +122,125 @@ mod ffi {
             unsafe {
                let _result =  Box::from_raw(ptr);
             }
+        }
+
+        pub fn fetch_odrl_world(handle: *mut i64,key: *const c_char) ->  *const c_char {
+            //convert odrl_world into *mut i64
+            if handle.is_null() || key.is_null() {
+                return null_mut();
+            }
+
+            let key = unsafe { CStr::from_ptr(key).to_string_lossy().into_owned() };
+            let key = IriBuf::from_str(&key);
+            if key.is_err() {
+                return null_mut();
+            }
+            let key = key.unwrap();
+
+            let policy = handle_to_policy(handle);
+            if policy.is_none() {
+                return null_mut();
+            }
+
+            let policy = policy.unwrap();
+            let world_key = PolicyEngine::find_world_key(policy);
+            if world_key.is_none() {
+                return null_mut();
+            }
+
+            let world_key = world_key.unwrap();
+            let cache = GLOBAL_WORLD_CACHE.clone();
+            let state = cache.find_world(world_key.as_str());
+            if state.is_none() {
+                return null_mut();
+            }
+            let state = state.unwrap();
+
+            let state = state.value().get_state(&key);
+            if state.is_none() {
+                return null_mut();
+            }
+
+            let state = state.unwrap();
+            let result = CString::new(state).unwrap();
+            result.into_raw()
+        }
+
+        pub fn update_odrl_world(handle: *mut i64,key: *const c_char,val: *const c_char) ->  i32 {
+            //convert odrl_world into *mut i64
+            if handle.is_null() || key.is_null() || val.is_null() {
+                return -1;
+            }
+
+            let key = unsafe { CStr::from_ptr(key).to_string_lossy().into_owned() };
+            let key = IriBuf::from_str(&key);
+            if key.is_err() {
+                return -1;
+            }
+            let key = key.unwrap();
+
+            let policy = handle_to_policy(handle);
+            if policy.is_none() {
+                return -1;
+            }
+
+            let policy = policy.unwrap();
+            let world_key = PolicyEngine::find_world_key(policy);
+            if world_key.is_none() {
+                return -1;
+            }
+
+            let world_key = world_key.unwrap();
+            let cache = GLOBAL_WORLD_CACHE.clone();
+            let state = cache.find_world(world_key.as_str());
+            if state.is_none() {
+                return -1;
+            }
+            let mut state = state.unwrap();
+
+            let val = unsafe { CStr::from_ptr(val).to_string_lossy().into_owned() };
+            state.value_mut().update_state(key.as_str(),val.as_str());
+            return 0;
+        }
+
+        pub fn add_odrl_world(handle: *mut i64,key: *const c_char,val: *const c_char) ->  i32 {
+            Engine::update_odrl_world(handle, key, val)
+        }
+
+        pub fn remove_odrl_world(handle: *mut i64,key: *const c_char) ->  i32 {
+            //convert odrl_world into *mut i64
+            if handle.is_null() || key.is_null() {
+                return -1;
+            }
+
+            let key = unsafe { CStr::from_ptr(key).to_string_lossy().into_owned() };
+            let key = IriBuf::from_str(&key);
+            if key.is_err() {
+                return -1;
+            }
+            let key = key.unwrap();
+
+            let policy = handle_to_policy(handle);
+            if policy.is_none() {
+                return -1;
+            }
+
+            let policy = policy.unwrap();
+            let world_key = PolicyEngine::find_world_key(policy);
+            if world_key.is_none() {
+                return -1;
+            }
+
+            let world_key = world_key.unwrap();
+            let cache = GLOBAL_WORLD_CACHE.clone();
+            let state = cache.find_world(world_key.as_str());
+            if state.is_none() {
+                return -1;
+            }
+            let mut state = state.unwrap();
+
+            state.value_mut().remove_state(key.as_str());
+            return 0;
         }
     }
 }
@@ -146,21 +271,58 @@ pub extern "C" fn create_odrl_world(odrl: *const c_char) ->  *mut i64 {
 
 #[no_mangle]
 pub extern "C" fn eval_odrl_world(handle: *mut i64,action: *const c_char,target: *const c_char,assigner: *const c_char,assignee: *const c_char) ->  i32 {
-    0
+    ffi::Engine::set_verbose(true);
+
+    //eval policy
+    if handle.is_null() {
+        return -1;
+    }
+
+    let mut req = OdrlRequest::default();
+    if action.is_null() {
+        return -1;
+    }
+    let action = unsafe { CStr::from_ptr(action).to_string_lossy().into_owned() };
+    req.set_action(to_iri(action.as_str()));
+
+    if target.is_null() {
+        return -1;
+    }
+    let target = unsafe { CStr::from_ptr(target).to_string_lossy().into_owned() };
+    req.set_target(to_iri(target.as_str()));
+
+    if !assigner.is_null() {
+        let assigner = unsafe { CStr::from_ptr(assigner).to_string_lossy().into_owned() };
+        req.set_assigner(to_iri(assigner.as_str()));
+    }
+
+    if !assignee.is_null() {
+        let assignee = unsafe { CStr::from_ptr(assignee).to_string_lossy().into_owned() };
+        req.set_assignee(to_iri(assignee.as_str()));
+    }
+
+    let result = ffi::Engine::policy_evaluate(handle,req);
+    result
 }
 
 #[no_mangle]
 pub extern "C" fn update_odrl_world(handle: *mut i64,key: *const c_char,value: *const c_char) ->  i32 {
-    0
+    ffi::Engine::update_odrl_world(handle, key, value)
 }
 
 #[no_mangle]
-pub extern "C" fn fetch_odrl_world(handle: *mut i64,value: *const c_char) ->  *const c_char {
-    null_mut()
+pub extern "C" fn fetch_odrl_world(handle: *mut i64,key: *const c_char) ->  *const c_char {
+    ffi::Engine::fetch_odrl_world(handle, key)
+}
+
+#[no_mangle]
+pub extern "C" fn remove_odrl_world(handle: *mut i64,key: *const c_char) ->  i32 {
+    ffi::Engine::remove_odrl_world(handle, key)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::CString;
     use rusadrl::model::policy::OdrlRequest;
     use super::*;
     #[test]

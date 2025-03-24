@@ -16,7 +16,6 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use std::str::FromStr;
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::action::{Action, ActionInferencer, ActionType};
