@@ -33,11 +33,11 @@ use std::str::FromStr;
 use iref::IriBuf;
 use rusadrl::model::policy::OdrlRequest;
 
-fn to_iri(s: &str) -> Option<IriBuf> {
+pub fn to_iri(s: &str) -> Option<IriBuf> {
     IriBuf::from_str(s).ok()
 }
 
-mod ffi {
+pub mod ffi {
     use std::borrow::BorrowMut;
     use std::ffi::{c_char, CStr, CString};
     use std::ptr::null_mut;
@@ -183,7 +183,6 @@ mod ffi {
             if policy.is_none() {
                 return -1;
             }
-
             let policy = policy.unwrap();
             let world_key = PolicyEngine::find_world_key(policy);
             if world_key.is_none() {
@@ -375,7 +374,7 @@ mod tests {
 				"unit": "m",
 				"leftOperand": "dateTime",
 				"operator": "lt",
-				"rightOperand": "2025-12-31"
+				"rightOperand": "2024-12-31"
 			}
 		},
 		{

@@ -48,6 +48,7 @@ rdf-types = "0.22"
 xsd-types = "0.9"
 dashmap = {version = "6.1", features = ["serde"]}
 
+
 [profile.release]
 opt-level = 3
 debug = true

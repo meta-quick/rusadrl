@@ -19,10 +19,87 @@
 
 use std::str::FromStr;
 use anyhow::anyhow;
+use chrono::Duration;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use serde_json::to_string;
+use thiserror::Error;
 use crate::model::stateworld::StateWorld;
 use crate::reference::types::{OperandValue, OperandValueType};
+
+// 自定义错误类型
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error("持续时间字符串中包含无效字符")]
+    InvalidCharacter,
+    #[error("持续时间字符串组件不完整")]
+    IncompleteComponent,
+    #[error("解析数字失败: {0}")]
+    ParseNumberError(#[from] std::num::ParseFloatError),
+}
+
+// 解析 XML 持续时间字符串
+pub fn parse_xml_duration(duration_str: &str) -> Result<Duration, ParseError> {
+    let mut total_seconds: f64 = 0.0; // 使用 f64 以支持小数
+    let mut current_num = String::new(); // 累积当前数字
+    let mut is_negative = false; // 是否为负持续时间
+    let mut in_time_part = false; // 是否在时间部分
+
+    let mut chars = duration_str.chars().peekable();
+
+    // 检查负号
+    if let Some('-') = chars.peek() {
+        is_negative = true;
+        chars.next();
+    }
+
+    // 确保以 'P' 开头
+    if chars.next() != Some('P') {
+        return Err(ParseError::InvalidCharacter);
+    }
+
+    // 逐字符解析
+    while let Some(ch) = chars.next() {
+        match ch {
+            'T' => {
+                in_time_part = true;
+                continue;
+            }
+            'Y' | 'M' | 'D' | 'H' | 'M' | 'S' => {
+                if current_num.is_empty() {
+                    return Err(ParseError::IncompleteComponent);
+                }
+                let value = f64::from_str(&current_num)?;
+                current_num.clear();
+                total_seconds += match (ch, in_time_part) {
+                    ('Y', false) => value * 365.25 * 24.0 * 3600.0, // 年，考虑闰年
+                    ('M', false) => value * 30.44 * 24.0 * 3600.0,  // 月，平均长度
+                    ('D', false) => value * 24.0 * 3600.0,          // 天
+                    ('H', true) => value * 3600.0,                  // 小时
+                    ('M', true) => value * 60.0,                    // 分钟
+                    ('S', true) => value,                           // 秒
+                    _ => return Err(ParseError::InvalidCharacter),
+                };
+            }
+            c if c.is_digit(10) || c == '.' => current_num.push(c),
+            _ => return Err(ParseError::InvalidCharacter),
+        }
+    }
+
+    // 检查是否有未处理的数字
+    if !current_num.is_empty() {
+        return Err(ParseError::IncompleteComponent);
+    }
+
+    // 应用正负号
+    let total_seconds = if is_negative {
+        -total_seconds
+    } else {
+        total_seconds
+    };
+
+    Ok(Duration::seconds(total_seconds as i64))
+}
+
 
 #[derive(Debug,Clone)]
 pub enum ConstraintLeftOperand {
@@ -123,9 +200,7 @@ impl  ConstraintLeftOperand {
             | ConstraintLeftOperand::unit
             | ConstraintLeftOperand::version
             | ConstraintLeftOperand::virtualLocation
-            | ConstraintLeftOperand::timeInterval
             | ConstraintLeftOperand::delayPeriod
-            | ConstraintLeftOperand::meteredTime
             => {
                 let state = String::try_from(self.clone()).unwrap();
                 let state = world.get_state(state.as_str());
@@ -138,9 +213,24 @@ impl  ConstraintLeftOperand {
                         return Ok(val);
                     },
                     None => {
+                        //TODO: try value from status
                         return Err(anyhow!("constraint left operand: {} not found",state.unwrap()));
                     }
                 }
+            }
+            ConstraintLeftOperand::timeInterval => {
+                let time_interval = world.timeInterval();
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::string);
+                val.set_sval(Some(time_interval.to_string()));
+                return Ok(val);
+            }
+            ConstraintLeftOperand::meteredTime => {
+                let metered_time = world.meteredTime();
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::string);
+                val.set_sval(Some(metered_time.to_string()));
+                return Ok(val);
             }
             ConstraintLeftOperand::datetime => {
                 let now = world.now();
@@ -268,5 +358,14 @@ mod test {
         println!("{:?}", ver);
         let s: String= ver.try_into().unwrap();
         println!("{:?}", s);
+    }
+
+    #[test]
+    fn test_constraint_left_operand_error() {
+        let duration_str = "P1Y2M3DT4H5M6S"; // Example XML duration string
+        match parse_xml_duration(duration_str) {
+            Ok(duration) => println!("Total duration in seconds: {}", duration.num_seconds()),
+            Err(e) => println!("Error parsing duration: {}", e),
+        }
     }
 }

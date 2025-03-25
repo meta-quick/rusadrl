@@ -35,6 +35,7 @@ pub struct StateWorld {
     pub state: HashMap<String, String>,
     pub worldInitialTime: i64,
     pub last_executeTime: i64,
+    pub meteredTime: i64,
     pub operand_referred: HashMap<String,ConstraintRightOperand>,
     pub assets: HashMap<String, AssetCollection>,
     pub global_policies: HashMap<String, PolicyUnion>,
@@ -53,6 +54,7 @@ impl StateWorld {
             }
         }
         me.worldInitialTime = chrono::Utc::now().timestamp_millis();
+        me.meteredTime = 0;
         me
     }
     pub fn add_state(&mut self, state: &str, value: &str) {
@@ -81,6 +83,24 @@ impl StateWorld {
 
     pub fn last_execute_time(&self) -> i64 {
         self.last_executeTime
+    }
+
+    pub fn update_last_execute_time(&mut self) {
+        self.last_executeTime = self.now();
+    }
+
+    pub fn timeInterval(&self) -> i64 {
+        let last = self.last_executeTime;
+        let now = self.now();
+        now - last
+    }
+
+    pub fn update_metered_time(&mut self, time: i64) {
+        self.meteredTime += time;
+    }
+
+    pub fn meteredTime(&self) -> i64 {
+        self.meteredTime
     }
 
     pub fn set_referred_operand(&mut self, iri: String, referred: ConstraintRightOperand) {

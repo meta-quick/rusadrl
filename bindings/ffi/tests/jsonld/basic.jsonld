@@ -1,9 +1,3 @@
-package main
-
-import "github.com/meta-quick/godrl/pkg/odrl"
-
-func main() {
-	jsonld := `
 {
 	"@context": [
 		"https://www.w3.org/ns/odrl.jsonld",
@@ -52,7 +46,7 @@ func main() {
 				"unit": "m",
 				"leftOperand": "dateTime",
 				"operator": "lt",
-				"rightOperand": "2024-12-31"
+				"rightOperand": "2025-12-31"
 			}
 		},
 		{
@@ -66,36 +60,16 @@ func main() {
 				        "dataType": "dateTime",
 						"leftOperand": "dateTime",
 						"operator": "gt",
-						"rightOperand": "2025-12-31"
+						"rightOperand": "2024-12-31"
 					},
 					{
 					    "dataType": "dateTime",
 						"leftOperand": "dateTime",
 						"operator": "lt",
-						"rightOperand": "2025-12-31"
+						"rightOperand": "2024-12-31"
 					}
 				]
 			}
 		}
 	]
-}
-    `
-
-	engine := odrl.NewEngine(false, jsonld)
-	defer engine.Close()
-
-	result := engine.Eval("http://www.w3.org/ns/odrl/2/use",
-		"https://datasate.ids/llm/dataset/0001",
-		"https://datasate.ids/users/gaosg",
-		"https://datasate.ids/usercollection/liumazi")
-	println(result)
-
-	engine.UpdateWorld("https://datasate.ids/abc", "123")
-	engine.UpdateWorld("https://datasate.ids/def", "456")
-
-	a := engine.FetchWorld("https://datasate.ids/abc")
-	println(a)
-
-	a = engine.FetchWorld("https://datasate.ids/def")
-	println(a)
 }

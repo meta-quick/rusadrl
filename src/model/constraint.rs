@@ -35,7 +35,7 @@ pub struct Constraint {
     pub unit: String,
 
     //Identifier: http://www.w3.org/ns/odrl/2/status
-    pub status: bool,
+    pub status: Option<String>,
 
     //Identifier: http://www.w3.org/ns/odrl/2/dataType
     //JSONLD: @type
@@ -65,7 +65,7 @@ impl Constraint {
         Constraint {
             uid: Some(IriBuf::new(uid).unwrap()),
             unit: String::new(),
-            status: false,
+            status: None,
             dataType: String::new(),
             operator: None,
             leftOperand: None,
@@ -99,7 +99,7 @@ impl LogicEval for Constraint {
         let dty = DataType::try_from(self.dataType.clone());
         match dty {
             Ok(dty) => {
-                let result = operator.eval(dty,&left_value, &right_value);
+                let result = operator.eval(dty,&left_value, &right_value, &self.status);
                 Ok(result)
             }
             Err(e) => {

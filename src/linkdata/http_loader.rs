@@ -149,28 +149,28 @@ mod test {
     use reqwest::{Client, Proxy};
 
 
-    #[tokio::test]
-    async fn test_request(){
-        let proxy = Proxy::https("http://192.168.12.51:9981").unwrap();
-
-        let url = "https://schema.org/";
-        // let url = "https://www.baidu.com/";
-        let client = Client::builder().proxy(proxy).gzip(true).build().unwrap();
-
-        let response = client.get(url).send().await;
-        match response {
-            Ok(resp) => {
-                if resp.status().is_success() {
-                    println!("Headers: {:?}", resp.headers());
-                    let content = resp.text().await.unwrap();
-                    println!("Body: {:#?}", content);
-                }else {
-                    println!("err");
-                }
-            }
-            Err(e) => {
-                println!("{e:#?}");
-            }
-        }
-    }
+    // #[tokio::test]
+    // async fn test_request(){
+    //     let proxy = Proxy::https("http://192.168.12.51:9981").unwrap();
+    //
+    //     let url = "https://schema.org/";
+    //     // let url = "https://www.baidu.com/";
+    //     let client = Client::builder().proxy(proxy).gzip(true).build().unwrap();
+    //
+    //     let response = client.get(url).send().await;
+    //     match response {
+    //         Ok(resp) => {
+    //             if resp.status().is_success() {
+    //                 println!("Headers: {:?}", resp.headers());
+    //                 let content = resp.text().await.unwrap();
+    //                 println!("Body: {:#?}", content);
+    //             }else {
+    //                 println!("err");
+    //             }
+    //         }
+    //         Err(e) => {
+    //             println!("{e:#?}");
+    //         }
+    //     }
+    // }
 }

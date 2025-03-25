@@ -131,7 +131,7 @@ fn compile_constraint_one(json: &JsonLdConstraint) -> Result<Constraint,anyhow::
     //check status
     if json.get_status().is_some() {
         let status = json.get_status().clone().unwrap();
-        constraint.set_status(status.eq(&"true"));
+        constraint.set_status(Some(status));
     }
 
     //check operator

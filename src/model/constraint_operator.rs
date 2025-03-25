@@ -17,11 +17,14 @@
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
+use std::f32::consts::E;
 use std::str::FromStr;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use crate::model::data_type::DataType;
 use crate::reference::types::OperandValue;
-use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono::{NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc};
+use crate::model::{constraint_left_operand::parse_xml_duration };
+
 
 #[derive(Debug,Clone)]
 #[allow(non_camel_case_types)]
@@ -57,12 +60,26 @@ fn parse_datetime(input: &str) -> i64 {
     if let Ok(date) = date {
         return Utc.from_utc_datetime(&date).timestamp_millis()
     } else {
+        //try to parse date
         let date =  NaiveDate::parse_from_str(input, "%Y-%m-%d");
         if let Ok(date) = date {
             let datetime = date.and_hms(0, 0, 0);
             return Utc.from_utc_datetime(&datetime).timestamp_millis()
         }else {
-            0
+            //try to parse time
+            let time = chrono::NaiveTime::parse_from_str(input, "%H:%M:%S");
+            if let Ok(time) = time {
+                let seconds = time.num_seconds_from_midnight() as i64;
+                let milliseconds = seconds * 1_000;
+                return milliseconds;
+            } else {
+                let date =  parse_xml_duration(input);
+                if let Ok(date) = date {
+                    return date.num_milliseconds();
+                } else {
+                    return 0;
+                }
+            }
         }
     }
 }
@@ -96,301 +113,975 @@ impl TryFrom<&str> for ConstraintOperator {
 }
 
 impl ConstraintOperator {
-    pub fn eval(&self,dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    pub fn eval(&self,dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> bool {
         match self {
             ConstraintOperator::eq => {
-               return self.eq(dty,left,right);
+                let result = self.eq(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::gt => {
-               return self.gt(dty,left,right);
+                let result =  self.gt(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::gteq => {
-                return  self.gteq(dty,left,right);
+                let result =  self.gteq(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::lt => {
-                return self.lt(dty,left,right);
+                let result =  self.lt(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::lteq => {
-                return self.lteq(dty,left,right);
+                let result =  self.lteq(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::neq => {
-                return self.neq(dty,left,right);
+                let result =  self.neq(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::isA => {
-                return self.isA(dty,left,right);
+                let result =  self.isA(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::hasPart => {
-                return self.hasPart(dty,left,right);
+                let result =  self.hasPart(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::isPartOf => {
-                return self.isPartOf(dty,left,right);
+                let result =  self.isPartOf(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::isAllOf => {
-                return self.isAllOf(dty,left,right);
+                let result =  self.isAllOf(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::isAnyOf => {
-                return self.isAnyOf(dty,left,right);
+                let result =  self.isAnyOf(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             },
             ConstraintOperator::isNoneOf => {
-                return self.isNoneOf(dty,left,right);
+                let result =  self.isNoneOf(dty,left,right,de);
+                if let Ok(result) = result {
+                    return result;
+                }
+                return false;
             }
         }
     }
 
-    fn gt(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn gt(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
            DataType::Integer => {
-               let left = left.get_sval().unwrap();
-               let right = right.get_sval().unwrap();
-               let left = left.parse::<i64>().unwrap();
-               let right = right.parse::<i64>().unwrap();
-               left > right
+               let mut  left = left.get_sval();
+               if left.is_none() {
+                   //try to use de
+                   if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                   }
+                   left = de.clone();
+               }
+               let left = left.unwrap();
+
+               let right = right.get_sval();
+               if right.is_none() {
+                   return Err(anyhow::anyhow!("Right operand is None"));
+               }
+               let right = right.unwrap();
+
+               let left_val = left.parse::<i64>();
+               if left_val.is_err() {
+                   return Err(anyhow::anyhow!("Left operand has invalid value"));
+               }
+               let left_val = left_val.unwrap();
+
+               //try to parse right as integer
+               let right_val = right.parse::<i64>();
+               if let Ok(right_val) = right_val {
+                   return Ok(left_val > right_val);
+               }
+
+               //if right is not integer, treat it as a string
+               let right = parse_xml_duration(right.as_str());
+               if let Ok(right_val) = right {
+                   return Ok(left_val > right_val.num_milliseconds());
+               }
+               return Ok(false);
            },
            DataType::Float => {
-               let left = left.get_sval().unwrap();
-               let right = right.get_sval().unwrap();
-               let left = left.parse::<f64>().unwrap();
-               let right = right.parse::<f64>().unwrap();
-               if left - right > std::f64::EPSILON {
-                   return true;
+               let mut  left = left.get_sval();
+               if left.is_none() {
+                   //try to use de
+                   if de.is_none() {
+                       return Err(anyhow::anyhow!("Left operand is None"));
+                   }
+                   left = de.clone();
                }
-               false
+               let left = left.unwrap();
+
+               let right = right.get_sval();
+               if right.is_none() {
+                   return Err(anyhow::anyhow!("Right operand is None"));
+               }
+               let right = right.unwrap();
+
+
+               let left_val = left.parse::<f64>();
+               if left_val.is_err() {
+                   return Err(anyhow::anyhow!("Left operand has invalid value"));
+               }
+               let left_val = left_val.unwrap();
+
+               let right_val = right.parse::<f64>();
+               if right_val.is_err() {
+                   return Err(anyhow::anyhow!("Right operand has invalid value"));
+               }
+               let right_val = right_val.unwrap();
+
+               if left_val - right_val > std::f64::EPSILON {
+                   return Ok(true);
+               }
+               Ok(false)
            },
            DataType::Date => {
-               let left = left.get_sval().unwrap();
-               let right = right.get_sval().unwrap();
-               let left = left.parse::<i64>().unwrap();
-               let right = parse_datetime(right.as_str());
-               left > right
+               let mut  left = left.get_sval();
+               if left.is_none() {
+                   //try to use de
+                   if de.is_none() {
+                       return Err(anyhow::anyhow!("Left operand is None"));
+                   }
+                   left = de.clone();
+               }
+               let left = left.unwrap();
+
+               let right = right.get_sval();
+               if right.is_none() {
+                   return Err(anyhow::anyhow!("Right operand is None"));
+               }
+               let right = right.unwrap();
+
+               let left_val = left.parse::<i64>();
+               if left_val.is_err() {
+                   return Err(anyhow::anyhow!("Left operand has invalid value"));
+               }
+               let left_val = left_val.unwrap();
+
+               let right_val = parse_datetime(right.as_str());
+               Ok(left_val > right_val)
            },
            DataType::DateTime |
            DataType::Time => {
-               let left = left.get_sval().unwrap();
-               let right = right.get_sval().unwrap();
-               let left = left.parse::<i64>().unwrap();
-               let right = parse_datetime(right.as_str());
-               left > right
+               let mut  left = left.get_sval();
+               if left.is_none() {
+                   //try to use de
+                   if de.is_none() {
+                       return Err(anyhow::anyhow!("Left operand is None"));
+                   }
+                   left = de.clone();
+               }
+               let left = left.unwrap();
+
+               let right = right.get_sval();
+               if right.is_none() {
+                   return Err(anyhow::anyhow!("Right operand is None"));
+               }
+               let right = right.unwrap();
+
+
+               let left_val = left.parse::<i64>();
+               if left_val.is_err() {
+                   return Err(anyhow::anyhow!("Left operand has invalid value"));
+               }
+               let left_val = left_val.unwrap();
+
+               let right_val = parse_datetime(right.as_str());
+               Ok(left_val > right_val)
            }
-           _ => false
+           _ => Err(anyhow::anyhow!("Invalid operator"))
         }
     }
 
-    fn eq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn eq(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                left == right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                Ok(left == right)
             },
             DataType::Integer => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
-                left == right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = right.parse::<i64>();
+                if let Ok(right_val) = right_val {
+                    return Ok(left_val == right_val);
+                }
+
+                //if right is not integer, treat it as a string
+                let right = parse_xml_duration(right.as_str());
+                if let Ok(right_val) = right {
+                    return Ok(left_val == right_val.num_milliseconds());
+                }
+                return Err(anyhow::anyhow!("Right operand has invalid value"));
             },
             DataType::Float => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<f64>().unwrap();
-                let right = right.parse::<f64>().unwrap();
-                if (left - right).abs() < f64::EPSILON {
-                    return true;
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
                 }
-                false
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<f64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right = right.parse::<f64>();
+                if let Ok(right_val) = right {
+                    return Ok((left_val - right_val).abs() < f64::EPSILON);
+                }
+                return Err(anyhow::anyhow!("Right operand has invalid value"));
             },
             DataType::Boolean => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<bool>().unwrap();
-                let right = right.parse::<bool>().unwrap();
-                left == right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+
+                let left_val = left.parse::<bool>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right = right.parse::<bool>();
+                if right.is_err() {
+                    return Err(anyhow::anyhow!("Right operand has invalid value"));
+                }
+                let right_val = right.unwrap();
+
+                Ok(left_val == right_val)
             },
             DataType::Date |
             DataType::DateTime |
             DataType::Time => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left == right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left == right)
             }
         }
     }
 
-    fn gteq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn gteq(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de :&Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::Integer => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
-                left >= right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = right.parse::<i64>();
+                if let Ok(right_val) = right_val {
+                    return Ok(left_val >= right_val);
+                }
+                //if right is not integer, treat it as a string
+                let right = parse_xml_duration(right.as_str());
+                if let Ok(right_val) = right {
+                    return Ok(left_val >= right_val.num_milliseconds());
+                }
+                return Err(anyhow::anyhow!("Right operand has invalid value"));
             },
             DataType::Float => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<f64>().unwrap();
-                let right = right.parse::<f64>().unwrap();
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
 
-                left - right >= f64::EPSILON
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+
+                let left_val = left.parse::<f64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = right.parse::<f64>();
+                if right_val.is_err() {
+                    return Err(anyhow::anyhow!("Right operand has invalid value"));
+                }
+                let right_val = right_val.unwrap();
+
+
+                Ok(left_val - right_val >= f64::EPSILON)
             },
             DataType::Date => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left >= right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left >= right)
             },
             DataType::DateTime |
             DataType::Time => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left >= right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left >= right)
             }
             _ => {
-                false
+                Result::Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
-    fn lt(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn lt(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error>  {
         match dty {
             DataType::Integer => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
-                left < right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = right.parse::<i64>();
+                if let Ok(right_val) = right_val {
+                    return Ok(left_val < right_val);
+                }
+
+                //if right is not integer, treat it as a string
+                let right = parse_xml_duration(right.as_str());
+                if let Ok(right_val) = right {
+                    return Ok(left_val < right_val.num_milliseconds());
+                }
+                return Err(anyhow::anyhow!("Right operand has invalid value"));
             }
             DataType::Float => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<f64>().unwrap();
-                let right = right.parse::<f64>().unwrap();
-                left - right < f64::EPSILON
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<f64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right = right.parse::<f64>();
+                if right.is_err() {
+                    return Err(anyhow::anyhow!("Right operand has invalid value"));
+                }
+                let right_val = right.unwrap();
+                Ok(left_val - right_val < f64::EPSILON)
             },
             DataType::Date => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left < right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left_val < right_val)
             }
             DataType::Time => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left < right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left_val < right_val)
             }
             DataType::DateTime => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
 
-                left < right
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+
+                Ok(left_val < right_val)
             }
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
-    fn lteq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn lteq(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::Integer => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
-                left <= right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = right.parse::<i64>();
+                if let Ok(right_val) = right_val {
+                    return Ok(left_val <= right_val);
+                }
+
+                //if right is not integer, treat it as a string
+                let right = parse_xml_duration(right.as_str());
+                if let Ok(right_val) = right {
+                    return Ok(left_val <= right_val.num_milliseconds());
+                }
+                return Err(anyhow::anyhow!("Right operand has invalid value"));
             },
             DataType::Float => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<f64>().unwrap();
-                let right = right.parse::<f64>().unwrap();
-                left - right <= f64::EPSILON
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<f64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = right.parse::<f64>();
+                if right_val.is_err() {
+                    return Err(anyhow::anyhow!("Right operand has invalid value"));
+                }
+                let right_val = right_val.unwrap();
+                Ok(left_val - right_val <= f64::EPSILON)
             }
             DataType::Date => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left <= right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left = left.parse::<i64>();
+                if left.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left_val <= right_val)
             }
             DataType::Time => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left <= right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left = left.parse::<i64>();
+                if left.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left_val <= right_val)
             }
             DataType::DateTime => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left <= right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left_val <= right_val)
             }
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
 
-    fn neq(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn neq(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                left != right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                Ok(left != right)
             }
             DataType::Integer => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = right.parse::<i64>().unwrap();
-                left != right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = right.parse::<i64>();
+                if let Ok(right_val) = right_val {
+                    return Ok(left_val != right_val);
+                }
+                //if right is not integer, treat it as a string
+                let right = parse_xml_duration(right.as_str());
+                if let Ok(right_val) = right {
+                    return Ok(left_val != right_val.num_milliseconds());
+                }
+                return Ok(false);
             },
             DataType::Float => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<f64>().unwrap();
-                let right = right.parse::<f64>().unwrap();
-                (left - right) > f64::EPSILON
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<f64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+                let right_val = right.parse::<f64>();
+                if right_val.is_err() {
+                    return Err(anyhow::anyhow!("Right operand has invalid value"));
+                }
+                let right_val = right_val.unwrap();
+
+                Ok((left_val - right_val) > f64::EPSILON)
             }
             DataType::Date => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left != right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left_val != right_val)
             }
             DataType::Time => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left != right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left_val != right_val)
             }
             DataType::DateTime => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_sval().unwrap();
-                let left = left.parse::<i64>().unwrap();
-                let right = parse_datetime(right.as_str());
-                left != right
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_sval();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                let left_val = left.parse::<i64>();
+                if left_val.is_err() {
+                    return Err(anyhow::anyhow!("Left operand has invalid value"));
+                }
+                let left_val = left_val.unwrap();
+
+                let right_val = parse_datetime(right.as_str());
+                Ok(left != right)
             }
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
 
     #[allow(non_snake_case)]
-    fn isA(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn isA(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String
             | DataType::Integer
@@ -398,18 +1089,32 @@ impl ConstraintOperator {
             | DataType::Date
             | DataType::Time
             => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_set().unwrap();
-                right.contains(&left)
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_set();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                Ok(right.contains(&left))
             },
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
 
     #[allow(non_snake_case)]
-    fn hasPart(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn hasPart(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String
             | DataType::Integer
@@ -417,17 +1122,31 @@ impl ConstraintOperator {
             | DataType::Date
             | DataType::Time
             => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_set().unwrap();
-                right.contains(&left)
+                let mut  left = left.get_sval();
+                if left.is_none() {
+                    //try to use de
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_set();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
+                Ok(right.contains(&left))
             },
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
 
-    fn isPartOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn isPartOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String
             | DataType::Integer
@@ -437,15 +1156,15 @@ impl ConstraintOperator {
             => {
                 let left = left.get_sval().unwrap();
                 let right = right.get_set().unwrap();
-                right.contains(&left)
+                Ok(right.contains(&left))
             }
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
 
-    fn isAllOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn isAllOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String
             | DataType::Integer
@@ -455,15 +1174,15 @@ impl ConstraintOperator {
             => {
                 let left = left.get_set().unwrap();
                 let right = right.get_set().unwrap();
-                left.iter().all(|x| right.contains(x))
+                Ok(left.iter().all(|x| right.contains(x)))
             }
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
 
-    fn isAnyOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn isAnyOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String
             | DataType::Integer
@@ -473,14 +1192,14 @@ impl ConstraintOperator {
             => {
                 let left = left.get_set().unwrap();
                 let right = right.get_set().unwrap();
-                left.iter().any(|x| right.contains(x))
+                Ok(left.iter().any(|x| right.contains(x)))
             }
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
-    fn isNoneOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue) -> bool {
+    fn isNoneOf(&self, dty: DataType, left: &OperandValue, right: &OperandValue,de: &Option<String>) -> Result<bool, anyhow::Error> {
         match dty {
             DataType::String
             | DataType::Integer
@@ -491,10 +1210,10 @@ impl ConstraintOperator {
                 let left = left.get_set().unwrap();
                 let right = right.get_set().unwrap();
                 let result = left.iter().any(|x| right.contains(x));
-                !result
+                Ok(!result)
             }
             _ => {
-                false
+                Err(anyhow::anyhow!("Invalid operator"))
             }
         }
     }
@@ -534,6 +1253,7 @@ impl TryFrom<&str> for ConstraintLogicOperator {
 #[cfg(test)]
 mod tests {
     use chrono::{NaiveDate, NaiveDateTime};
+    use crate::model::constraint_operator::parse_datetime;
 
     #[test]
     fn test_parse_operator() {
@@ -545,5 +1265,21 @@ mod tests {
         println!("{:?}", date);
         println!("{:?}", now);
         println!("{:?}", now - date);
+    }
+
+    #[test]
+    fn test_parse_datetime() {
+        let t1 = parse_datetime("2025-3-24 00:00:00");
+        let t2 = parse_datetime("2025-3-24");
+        let t3 = parse_datetime("10:00:00");
+        let t4 = parse_datetime("11:00:00");
+        let t5 = parse_datetime("PT1H");
+
+        //print each time
+        println!("{:?}", t1);
+        println!("{:?}", t2);
+        println!("{:?}", t3);
+        println!("{:?}", t4);
+        println!("{:?}", t5);
     }
 }
