@@ -106,7 +106,13 @@ pub mod ffi {
             }
             let mut world = world.unwrap();
 
-            let result = PolicyEngine::eval(world.value_mut(),odrl,&req);
+            //update world
+            let world = world.value_mut();
+            let started = world.now();
+            let result = PolicyEngine::eval(world.borrow_mut(),odrl,&req);
+            let finished = world.now();
+            world.update_metered_time(finished-started);
+            world.update_last_execute_time();
 
             if result.is_err() {
                 return -1;
