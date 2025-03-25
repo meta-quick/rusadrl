@@ -477,7 +477,7 @@ impl ConstraintOperator {
                 let left_val = left_val.unwrap();
 
                 let right_val = parse_datetime(right.as_str());
-                Ok(left == right)
+                Ok(left_val == right_val)
             }
         }
     }
@@ -575,7 +575,7 @@ impl ConstraintOperator {
                 let left_val = left_val.unwrap();
 
                 let right_val = parse_datetime(right.as_str());
-                Ok(left >= right)
+                Ok(left_val >= right_val)
             },
             DataType::DateTime |
             DataType::Time => {
@@ -602,7 +602,7 @@ impl ConstraintOperator {
                 let left_val = left_val.unwrap();
 
                 let right_val = parse_datetime(right.as_str());
-                Ok(left >= right)
+                Ok(left_val >= right_val)
             }
             _ => {
                 Result::Err(anyhow::anyhow!("Invalid operator"))
@@ -1072,7 +1072,7 @@ impl ConstraintOperator {
                 let left_val = left_val.unwrap();
 
                 let right_val = parse_datetime(right.as_str());
-                Ok(left != right)
+                Ok(left_val != right_val)
             }
             _ => {
                 Err(anyhow::anyhow!("Invalid operator"))
@@ -1154,8 +1154,21 @@ impl ConstraintOperator {
             | DataType::Date
             | DataType::Time
             => {
-                let left = left.get_sval().unwrap();
-                let right = right.get_set().unwrap();
+                let mut left = left.get_sval();
+                if left.is_none() {
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = de.clone();
+                }
+                let left = left.unwrap();
+
+                let right = right.get_set();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
                 Ok(right.contains(&left))
             }
             _ => {
@@ -1172,8 +1185,21 @@ impl ConstraintOperator {
             | DataType::Date
             | DataType::Time
             => {
-                let left = left.get_set().unwrap();
-                let right = right.get_set().unwrap();
+                let mut left = left.get_set();
+                if left.is_none() {
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = Some(vec![de.clone().unwrap()]);
+                }
+                let left = left.unwrap();
+
+                let right = right.get_set();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
                 Ok(left.iter().all(|x| right.contains(x)))
             }
             _ => {
@@ -1190,8 +1216,21 @@ impl ConstraintOperator {
             | DataType::Date
             | DataType::Time
             => {
-                let left = left.get_set().unwrap();
-                let right = right.get_set().unwrap();
+                let mut left = left.get_set();
+                if left.is_none() {
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = Some(vec![de.clone().unwrap()]);
+                }
+                let left = left.unwrap();
+
+                let right = right.get_set();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
                 Ok(left.iter().any(|x| right.contains(x)))
             }
             _ => {
@@ -1207,8 +1246,21 @@ impl ConstraintOperator {
             | DataType::Date
             | DataType::Time
             => {
-                let left = left.get_set().unwrap();
-                let right = right.get_set().unwrap();
+                let mut left = left.get_set();
+                if left.is_none() {
+                    if de.is_none() {
+                        return Err(anyhow::anyhow!("Left operand is None"));
+                    }
+                    left = Some(vec![de.clone().unwrap()]);
+                }
+                let left = left.unwrap();
+
+                let right = right.get_set();
+                if right.is_none() {
+                    return Err(anyhow::anyhow!("Right operand is None"));
+                }
+                let right = right.unwrap();
+
                 let result = left.iter().any(|x| right.contains(x));
                 Ok(!result)
             }

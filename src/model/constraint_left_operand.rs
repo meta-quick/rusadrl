@@ -64,7 +64,7 @@ pub fn parse_xml_duration(duration_str: &str) -> Result<Duration, ParseError> {
                 in_time_part = true;
                 continue;
             }
-            'Y' | 'M' | 'D' | 'H' | 'M' | 'S' => {
+            'Y' | 'M' | 'D' | 'H' | 'S' => {
                 if current_num.is_empty() {
                     return Err(ParseError::IncompleteComponent);
                 }
@@ -213,7 +213,6 @@ impl  ConstraintLeftOperand {
                         return Ok(val);
                     },
                     None => {
-                        //TODO: try value from status
                         return Err(anyhow!("constraint left operand: {} not found",state.unwrap()));
                     }
                 }

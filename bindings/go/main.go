@@ -47,12 +47,13 @@ func main() {
 	"permission": [{
 			"action": "use",
 			"assignee": "https://datasate.ids/usercollection/liumazi",
+			"target": ["https://datasate.ids/llm/dataset/0001","https://datasate.ids/llm/dataset/0001"],
 			"constraint": {
 				"dataType": "dateTime",
 				"unit": "m",
 				"leftOperand": "dateTime",
 				"operator": "lt",
-				"rightOperand": "2024-12-31"
+				"rightOperand": "2025-12-31"
 			}
 		},
 		{
@@ -83,6 +84,10 @@ func main() {
 
 	engine := odrl.NewEngine(false, jsonld)
 	defer engine.Close()
+
+	/**
+	  sftp user -- odrl user mapping (user req exec contract)
+	*/
 
 	result := engine.Eval("http://www.w3.org/ns/odrl/2/use",
 		"https://datasate.ids/llm/dataset/0001",
