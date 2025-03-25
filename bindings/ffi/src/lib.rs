@@ -374,7 +374,7 @@ mod tests {
 				"unit": "m",
 				"leftOperand": "dateTime",
 				"operator": "lt",
-				"rightOperand": "2024-12-31"
+				"rightOperand": "2025-12-31"
 			}
 		},
 		{

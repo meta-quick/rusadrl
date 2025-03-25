@@ -17,6 +17,7 @@
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
+use std::f32::consts::E;
 use std::str::FromStr;
 use anyhow::anyhow;
 use chrono::Duration;
@@ -202,7 +203,7 @@ impl  ConstraintLeftOperand {
             | ConstraintLeftOperand::virtualLocation
             | ConstraintLeftOperand::delayPeriod
             => {
-                let state = String::try_from(self.clone()).unwrap();
+                let state = self.to_iri().unwrap();
                 let state = world.get_state(state.as_str());
 
                 let mut val = OperandValue::default();
@@ -246,6 +247,107 @@ impl  ConstraintLeftOperand {
                 val.set_sval(Some(eclipsed.to_string()));
 
                 Ok(val)
+            }
+        }
+    }
+
+    pub fn to_iri(&self) -> Result<String, anyhow::Error> {
+        match self {
+            ConstraintLeftOperand::absolutePosition => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/absolutePosition"))
+            }
+            ConstraintLeftOperand::absoluteSpatialPosition => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/absoluteSpatialPosition"))
+            }
+            ConstraintLeftOperand::absoluteTemporalPosition => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/absoluteTemporalPosition"))
+            }
+            ConstraintLeftOperand::absoluteSize => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/absoluteSize"))
+            }
+            ConstraintLeftOperand::count => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/count"))
+            }
+            ConstraintLeftOperand::datetime => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/datetime"))
+            }
+            ConstraintLeftOperand::delayPeriod => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/delayPeriod"))
+            }
+            ConstraintLeftOperand::deliveryChannel => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/deliveryChannel"))
+            }
+            ConstraintLeftOperand::elapsedTime => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/elapsedTime"))
+            }
+            ConstraintLeftOperand::event => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/event"))
+            }
+            ConstraintLeftOperand::fileFormat => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/fileFormat"))
+            }
+            ConstraintLeftOperand::industry => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/industry"))
+            }
+            ConstraintLeftOperand::language => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/language"))
+            }
+            ConstraintLeftOperand::media => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/media"))
+            }
+            ConstraintLeftOperand::meteredTime => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/meteredTime"))
+            }
+            ConstraintLeftOperand::payAmount => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/payAmount"))
+            }
+            ConstraintLeftOperand::percentage => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/percentage"))
+            }
+            ConstraintLeftOperand::product => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/product"))
+            }
+            ConstraintLeftOperand::purpose => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/purpose"))
+            }
+            ConstraintLeftOperand::recipient => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/recipient"))
+            }
+            ConstraintLeftOperand::relativePosition => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/relativePosition"))
+            }
+            ConstraintLeftOperand::relativeSpatialPosition => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/relativeSpatialPosition"))
+            }
+            ConstraintLeftOperand::relativeTemporalPosition => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/relativeTemporalPosition"))
+            }
+            ConstraintLeftOperand::relativeSize => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/relativeSize"))
+            }
+            ConstraintLeftOperand::resolution => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/resolution"))
+            }
+            ConstraintLeftOperand::spatial => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/spatial"))
+            }
+            ConstraintLeftOperand::spatialCoordinates => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/spatialCoordinates"))
+            }
+            ConstraintLeftOperand::systemDevice => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/systemDevice"))
+            }
+            ConstraintLeftOperand::timeInterval => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/timeInterval"))
+            }
+            ConstraintLeftOperand::unit => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/unit"))
+            }
+            ConstraintLeftOperand::version => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/version"))
+            }
+            ConstraintLeftOperand::virtualLocation => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/virtualLocation"))
             }
         }
     }

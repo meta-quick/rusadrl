@@ -63,7 +63,7 @@ fn parse_datetime(input: &str) -> i64 {
         //try to parse date
         let date =  NaiveDate::parse_from_str(input, "%Y-%m-%d");
         if let Ok(date) = date {
-            let datetime = date.and_hms(0, 0, 0);
+            let datetime = date.and_hms_opt(0, 0, 0).unwrap();
             return Utc.from_utc_datetime(&datetime).timestamp_millis()
         }else {
             //try to parse time
