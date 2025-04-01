@@ -214,7 +214,7 @@ impl  ConstraintLeftOperand {
                         return Ok(val);
                     },
                     None => {
-                        return Err(anyhow!("constraint left operand: {} not found",state.unwrap()));
+                        return Err(anyhow!("constraint left operand: {} not found",&self.to_iri().unwrap()));
                     }
                 }
             }

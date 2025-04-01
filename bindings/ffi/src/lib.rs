@@ -423,5 +423,73 @@ mod tests {
         let result = ffi::Engine::policy_evaluate(handle,req);
         println!("result: {:?}", result);
     }
+
+
+    #[test]
+    fn test_set_world() {
+        let json = r#"
+{
+	"@context": [
+		"https://www.w3.org/ns/odrl.jsonld",
+		{
+			"title": "https://datasafe.io/ds/1.1/title",
+			"creator": "https://datasafe.io/ds/1.1/creator",
+			"dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
+		}
+	],
+	"type": "Agreement",
+	"uid": "https://datasate.ids/aggreement/00001",
+	"assigner": {
+		"uid": "https://datasate.ids/users/gaosg",
+		"type": "Party",
+		"assignerOf": "https://datasate.ids/dataset/00001"
+	},
+	"assignee": {
+		"uid": "https://datasate.ids/usercollection/liumazi",
+		"type": "PartyCollection",
+		"source": "https://datasate.ids/usercollection/liumazi"
+	},
+    "target": "https://datasate.ids/llm/dataset/0001",
+	"title": "Policy 1",
+	"conflict": "Perm",
+	"inheritFrom": [],
+	"profile": "https://datasate.ids/profiles/0001",
+	"permission": [
+		{
+			"action": "use",
+			"assignee": "https://datasate.ids/usercollection/liumazi",
+			"constraint": {
+				"dataType": "integer",
+				"unit": "m",
+				"leftOperand": "count",
+				"operator": "lt",
+				"rightOperand": "5"
+			}
+		}
+	]
+}
+"#;
+
+        enable_verbose(1);
+
+        //covert json to *const c_char
+        let json = CString::new(json).unwrap();
+        let handle = create_odrl_world(json.as_c_str().as_ptr());
+
+        //eval policy
+        let mut req = OdrlRequest::default();
+
+        //set world
+        let count = CString::new("http://www.w3.org/ns/odrl/2/count".to_string()).unwrap();
+        let num = CString::new("3".to_string()).unwrap();
+        update_odrl_world(handle, count.as_c_str().as_ptr(), num.as_c_str().as_ptr());
+
+        req.set_action(to_iri("http://www.w3.org/ns/odrl/2/use"));
+        req.set_assignee(to_iri("https://datasate.ids/usercollection/liumazi"));
+        req.set_assigner(to_iri("https://datasate.ids/users/gaosg"));
+        req.set_target(to_iri("https://datasate.ids/llm/dataset/0001"));
+        let result = ffi::Engine::policy_evaluate(handle,req);
+        println!("result: {:?}", result);
+    }
 }
 

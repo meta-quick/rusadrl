@@ -18,6 +18,7 @@
 
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
+use crate::config;
 use crate::model::constraint_operator::ConstraintLogicOperator;
 use crate::model::data_type::DataType;
 use crate::model::metadata::Metadata;
@@ -96,6 +97,10 @@ impl LogicEval for Constraint {
         let left_value = left.value(&mut world);
         if left_value.is_err() {
             if self.status.is_none() {
+               let config = config::CONFIG.lock().unwrap();
+               if config.verbose {
+                   println!("{:?}", left_value.unwrap_err().to_string());
+               }
                return   Ok(false);
             }
         }
