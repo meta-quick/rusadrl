@@ -23,6 +23,11 @@ func NewEngine(verbose bool, jsonld string) *Engine {
 	}
 
 	e.handle = C.create_odrl_world(json)
+
+	if e.handle == nil {
+		return nil
+	}
+
 	return e
 }
 
