@@ -540,7 +540,7 @@ mod tests {
                              "constraint": [
                                 {
                                     "leftOperand":"timeInterval",
-                                    "operator": "gt",
+                                    "operator": "lt",
                                     "dataType": "duration",
                                     "rightOperand": "PT2S"
                                 }
@@ -578,25 +578,9 @@ mod tests {
         let result = ffi::Engine::policy_evaluate(handle,req.clone());
         println!("result: {:?}", result);
         //sleep 1 day
-        // std::thread::sleep(std::time::Duration::from_secs(2));
-        // let result = ffi::Engine::policy_evaluate(handle,req.clone());
-        // println!("result: {:?}", result);
-
-        let mut idx = 0;
-        for _ in 0..1000000 {
-            if idx % 80 == 0 {
-                println!();
-            }
-            idx += 1;
-            let result = ffi::Engine::policy_evaluate(handle,req.clone());
-            if result == 1 {
-                print!("*");
-                print!("{}", idx);
-                break;
-            }else{
-                print!(".");
-            }
-        }
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
     }
 }
 

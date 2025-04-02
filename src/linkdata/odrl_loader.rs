@@ -146,7 +146,14 @@ fn compile_constraint_one(json: &JsonLdConstraint) -> Result<Constraint,anyhow::
     //check left operand
     if json.get_left_operand().is_some() {
         let left_operand = json.get_left_operand().clone().unwrap();
-        let left_operand = ConstraintLeftOperand::try_from(left_operand.get_uid().as_str())?;
+        let left_operand_iri = left_operand.get_uid().as_str();
+        if left_operand_iri.contains("timeInterval")  {
+            //adjust operator to gt
+            println!("Adjust operator to gt for timeInterval {}", left_operand_iri);
+            constraint.set_operator(Some(ConstraintOperator::gt));
+        }
+
+        let left_operand = ConstraintLeftOperand::try_from(left_operand_iri)?;
         constraint.set_leftOperand(Some(left_operand));
     } else {
         return Err(anyhow!("None left operand found, error at {},{}",file!(),line!()));
