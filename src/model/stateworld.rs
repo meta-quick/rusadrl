@@ -18,14 +18,16 @@
 #![allow(non_camel_case_types)]
 
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc};
+use chrono::Duration;
 use dashmap::DashMap;
 use dashmap::mapref::one::RefMut;
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
 use once_cell::sync::Lazy;
 use crate::model::asset::{AssetCollection};
+use crate::model::constraint_left_operand::parse_xml_duration;
 use crate::model::constraint_right_operand::ConstraintRightOperand;
 use crate::model::policy::{PolicyUnion};
 
@@ -36,6 +38,10 @@ pub struct StateWorld {
     pub worldInitialTime: i64,
     pub last_executeTime: i64,
     pub meteredTime: i64,
+    pub counter_sequence: VecDeque<i64>,
+    pub slide_window_duration: Duration,
+    pub slide_window_counter: i64,
+    pub enabled_slide_window: bool,
     pub operand_referred: HashMap<String,ConstraintRightOperand>,
     pub assets: HashMap<String, AssetCollection>,
     pub global_policies: HashMap<String, PolicyUnion>,
@@ -55,19 +61,39 @@ impl StateWorld {
         }
         me.worldInitialTime = chrono::Utc::now().timestamp_millis();
         me.meteredTime = 0;
+        me.enabled_slide_window = false;
         me
     }
     pub fn add_state(&mut self, state: &str, value: &str) {
+        //Hack for timeWindow
+        if state.contains("timeWindow") {
+            self.set_slide_window(value.to_string());
+            self.enabled_slide_window = true;
+            return;
+        }
+
         self.state.insert(state.to_string(), value.to_string());
     }
 
     pub fn remove_state(&mut self, state: &str) {
+        if state.contains("timeWindow") {
+            self.enabled_slide_window = false;
+            return;
+        }
+
         self.state.remove(state);
     }
     pub fn get_state(&self, state: &str) -> Option<&str> {
         self.state.get(state).map(|s| s.as_ref())
     }
     pub fn update_state(&mut self, state: &str, value: &str) {
+        //Hack for timeWindow
+        if state.contains("timeWindow") {
+            self.set_slide_window(value.to_string());
+            self.enabled_slide_window = true;
+            return;
+        }
+
         self.state.insert(state.to_string(), value.to_string());
     }
 
@@ -125,6 +151,57 @@ impl StateWorld {
     pub fn add_policy(&mut self,iri: String,policy: PolicyUnion) {
         self.global_policies.insert(iri.to_string(), policy);
     }
+
+    pub fn set_slide_window(&mut self, slide: String) {
+        //slide format: count/duration
+        let parts = slide.split('/').collect::<Vec<&str>>();
+        if parts.len() != 2 {
+            return;
+        }
+
+        let count = parts[0].parse::<i64>();
+        if count.is_err() {
+            return;
+        }
+        let count = count.unwrap();
+
+        let duration = parse_xml_duration(parts[1]);
+        if duration.is_err() {
+            return;
+        }
+        let duration = duration.unwrap();
+
+        self.set_slide_window_duration(count, duration);
+    }
+
+    pub fn set_slide_window_duration(&mut self, count : i64, duration: Duration) {
+        self.slide_window_duration = duration;
+        self.slide_window_counter = count;
+    }
+
+    pub fn update_slide_window(&mut self) {
+        let now = chrono::Utc::now().timestamp_millis();
+        self.counter_sequence.push_back(now);
+    }
+
+    pub fn calc_slide_window(&mut self) -> i64 {
+        //calc left window
+        let now = chrono::Utc::now().timestamp_millis();
+        //check if the window is expired
+        loop{
+            let first = self.counter_sequence.get(0);
+            if first.is_none() {
+                break;
+            }
+            if now - first.unwrap() > self.slide_window_duration.num_milliseconds() {
+                self.counter_sequence.pop_front();
+            } else {
+                break;
+            }
+        }
+
+        self.slide_window_counter - self.counter_sequence.len() as i64
+    }
 }
 
 #[derive(Debug,Builder,Clone,Setter,Getter,GetterMut)]
@@ -159,4 +236,22 @@ pub static GLOBAL_WORLD_CACHE: Lazy<Arc<WorldCache>> = Lazy::new(|| {
 });
 
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_state_world() {
+        let mut w = StateWorld::new("http://example.com/");
+        w.set_slide_window_duration(10, Duration::milliseconds(1000));
 
+        for i in 0..6 {
+            std::thread::sleep(core::time::Duration::from_millis(10));
+            w.update_slide_window();
+        }
+
+        // std::thread::sleep(core::time::Duration::from_millis(960));
+
+        let count = w.calc_slide_window();
+        assert_eq!(count, 4);
+    }
+}

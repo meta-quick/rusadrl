@@ -120,6 +120,7 @@ pub mod ffi {
             //update last execute time only when result is ok
             let result = result.unwrap();
             if result == true {
+                world.update_slide_window();
                 world.update_last_execute_time();
             }
 
@@ -578,6 +579,93 @@ mod tests {
         println!("result: {:?}", result);
         //sleep 1 day
         std::thread::sleep(std::time::Duration::from_secs(2));
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+    }
+
+    #[test]
+    fn test_time_window() {
+        let json = r#"
+{
+        "@context": [
+                "https://www.w3.org/ns/odrl.jsonld",
+                {
+                        "title": "https://datasafe.io/ds/1.1/title",
+                        "creator": "https://datasafe.io/ds/1.1/creator",
+                        "dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
+                }
+        ],
+        "type": "Agreement",
+        "uid": "https://datasate.ids/aggreement/00001",
+        "assigner": {
+                "uid": "https://datasate.ids/users/gaosg",
+                "type": "Party",
+                "assignerOf": "https://datasate.ids/llm/dataset/00001"
+        },
+        "assignee": {
+                "uid": "https://datasate.ids/usercollection/liumazi",
+                "type": "PartyCollection",
+                "source": "https://datasate.ids/usercollection/liumazi"
+        },
+        "target": "https://datasate.ids/llm/dataset/00001",
+        "title": "Policy 1",
+        "conflict": "Perm",
+        "inheritFrom": [],
+        "profile": "https://datasate.ids/profiles/0001",
+        "permission": [
+                {
+                        "action": "http://www.w3.org/ns/odrl/2/use",
+                        "assignee": "https://datasate.ids/usercollection/liumazi",
+						"target":"https://datasate.ids/llm/dataset/00001",
+						"constraint": {
+							"type": "LogicalConstraint",
+							"uid": "http://example.com/constraint/1",
+							"operator": "and",
+                             "constraint": [
+                                {
+                                    "leftOperand":"timeWindow",
+                                    "operator": "gt",
+                                    "dataType": "duration",
+                                    "rightOperand": "0"
+                                }
+                                ]
+                            }
+                }
+        ]
+}
+"#;
+
+        // enable_verbose(1);
+
+        //covert json to *const c_char
+        let json = CString::new(json).unwrap();
+        let handle = create_odrl_world(json.as_c_str().as_ptr());
+
+        //eval policy
+        let mut req = OdrlRequest::default();
+
+        //set world
+        let count = CString::new("http://www.w3.org/ns/odrl/2/timeWindow".to_string()).unwrap();
+        let num = CString::new("3/PT1S".to_string()).unwrap();
+        update_odrl_world(handle, count.as_c_str().as_ptr(), num.as_c_str().as_ptr());
+
+
+        req.set_action(to_iri("http://www.w3.org/ns/odrl/2/use"));
+        req.set_assignee(to_iri("https://datasate.ids/usercollection/liumazi"));
+        req.set_assigner(to_iri("https://datasate.ids/users/gaosg"));
+        req.set_target(to_iri("https://datasate.ids/llm/dataset/00001"));
+
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
         let result = ffi::Engine::policy_evaluate(handle,req.clone());
         println!("result: {:?}", result);
     }

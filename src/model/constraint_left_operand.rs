@@ -167,7 +167,8 @@ pub enum ConstraintLeftOperand {
     //http://www.w3.org/ns/odrl/2/version
     version,
     //http://www.w3.org/ns/odrl/2/virtualLocation
-    virtualLocation
+    virtualLocation,
+    timeWindow
 }
 
 impl  ConstraintLeftOperand {
@@ -246,6 +247,13 @@ impl  ConstraintLeftOperand {
                 val.set_ty(OperandValueType::string);
                 val.set_sval(Some(eclipsed.to_string()));
 
+                Ok(val)
+            }
+            ConstraintLeftOperand::timeWindow => {
+                let time_window = world.calc_slide_window();
+                let mut val = OperandValue::default();
+                val.set_ty(OperandValueType::string);
+                val.set_sval(Some(time_window.to_string()));
                 Ok(val)
             }
         }
@@ -349,6 +357,9 @@ impl  ConstraintLeftOperand {
             ConstraintLeftOperand::virtualLocation => {
                 Ok(String::from("http://www.w3.org/ns/odrl/2/virtualLocation"))
             }
+            ConstraintLeftOperand::timeWindow => {
+                Ok(String::from("http://www.w3.org/ns/odrl/2/timeWindow"))
+            }
         }
     }
 }
@@ -397,6 +408,7 @@ impl TryFrom<&str> for ConstraintLeftOperand {
             "unit" => Ok(ConstraintLeftOperand::unit),
             "version" => Ok(ConstraintLeftOperand::version),
             "virtuallocation" => Ok(ConstraintLeftOperand::virtualLocation),
+            "timewindow" => Ok(ConstraintLeftOperand::timeWindow),
             _ => Err(anyhow::anyhow!("Invalid operator: {}", value))
         }
     }
@@ -439,6 +451,7 @@ impl TryFrom<ConstraintLeftOperand> for String {
             ConstraintLeftOperand::unit => Ok("unit".to_string()),
             ConstraintLeftOperand::version => Ok("version".to_string()),
             ConstraintLeftOperand::virtualLocation => Ok("virtualLocation".to_string()),
+            ConstraintLeftOperand::timeWindow => Ok("timeWindow".to_string()),
         }
     }
 }

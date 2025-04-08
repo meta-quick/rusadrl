@@ -147,7 +147,7 @@ fn compile_constraint_one(json: &JsonLdConstraint) -> Result<Constraint,anyhow::
     if json.get_left_operand().is_some() {
         let left_operand = json.get_left_operand().clone().unwrap();
         let left_operand_iri = left_operand.get_uid().as_str();
-        if left_operand_iri.contains("timeInterval")  {
+        if left_operand_iri.contains("timeInterval") || left_operand_iri.contains("timeWindow")  {
             //adjust operator to gt
             println!("Adjust operator to gt for timeInterval {}", left_operand_iri);
             constraint.set_operator(Some(ConstraintOperator::gt));

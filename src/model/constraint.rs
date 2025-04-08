@@ -94,6 +94,15 @@ impl LogicEval for Constraint {
         }
         let right = right.unwrap();
 
+        if let ConstraintLeftOperand::timeWindow = left {
+            return if world.enabled_slide_window {
+                let cap = world.calc_slide_window();
+                Ok(cap > 0)
+            } else {
+                Ok(false)
+            }
+        }
+
         let left_value = left.value(&mut world);
         if left_value.is_err() {
             if self.status.is_none() {
@@ -111,8 +120,8 @@ impl LogicEval for Constraint {
         if right_value.is_err() {
            return   Ok(false);
         }
-        let right_value = right_value.unwrap();
 
+        let right_value = right_value.unwrap();
         let dty = DataType::try_from(self.dataType.clone());
         match dty {
             Ok(dty) => {

@@ -253,6 +253,7 @@
         "absoluteTemporalPosition": "odrl:absoluteTemporalPosition",
         "absoluteSize": "odrl:absoluteSize",
         "count": "odrl:count",
+        "timeWindow": "odrl:timeWindow",
         "dateTime": "odrl:dateTime",
         "delayPeriod": "odrl:delayPeriod",
         "deliveryChannel": "odrl:deliveryChannel",
