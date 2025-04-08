@@ -669,5 +669,83 @@ mod tests {
         let result = ffi::Engine::policy_evaluate(handle,req.clone());
         println!("result: {:?}", result);
     }
+
+    #[test]
+    fn test_pt5s() {
+        let json = r#"
+{
+    "@context": [
+        "https://www.w3.org/ns/odrl.jsonld",
+        {
+            "title": "https://datasafe.io/ds/1.1/title",
+            "creator": "https://datasafe.io/ds/1.1/creator",
+            "dateCreated": "https://datasafe.io/ds/1.1/dateCreated"
+        }
+    ],
+    "type": "Agreement",
+    "uid": "https://datasate.ids/aggreement/202504081909526739520983040",
+    "assigner": {
+        "assignerOf": "https://datasate.ids/llm/dataset/00001",
+        "type": "Party",
+        "uid": "https://datasate.ids/users/gaosg"
+    },
+    "assignee": {
+        "source": "https://datasate.ids/usercollection/liumazi",
+        "type": "PartyCollection",
+        "uid": "https://datasate.ids/usercollection/liumazi"
+    },
+    "title": "Policy 1",
+    "conflict": "Perm",
+    "inheritFrom": [],
+    "profile": "https://datasate.ids/profiles/0001",
+    "permission": [
+        {
+            "action": "http://www.w3.org/ns/odrl/2/use",
+            "assignee": "https://datasate.ids/usercollection/liumazi",
+            "constraint": [
+                {
+                    "dataType": "duration",
+                    "leftOperand": "timeInterval",
+                    "operator": "gt",
+                    "rightOperand": "PT5S"
+                }
+            ],
+            "target": "https://datasate.ids/llm/dataset/407578645"
+        }
+    ],
+    "target": "https://datasate.ids/llm/dataset/407578645"
+}
+"#;
+
+        // enable_verbose(1);
+
+        //covert json to *const c_char
+        let json = CString::new(json).unwrap();
+        let handle = create_odrl_world(json.as_c_str().as_ptr());
+
+        //eval policy
+        let mut req = OdrlRequest::default();
+
+        //set world
+        // let count = CString::new("http://www.w3.org/ns/odrl/2/timeWindow".to_string()).unwrap();
+        // let num = CString::new("3/PT10S".to_string()).unwrap();
+        // update_odrl_world(handle, count.as_c_str().as_ptr(), num.as_c_str().as_ptr());
+
+
+        req.set_action(to_iri("http://www.w3.org/ns/odrl/2/use"));
+        req.set_assignee(to_iri("https://datasate.ids/usercollection/liumazi"));
+        req.set_assigner(to_iri("https://datasate.ids/users/gaosg"));
+        req.set_target(to_iri("https://datasate.ids/llm/dataset/407578645"));
+
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        let result = ffi::Engine::policy_evaluate(handle,req.clone());
+        println!("result: {:?}", result);
+    }
 }
 
