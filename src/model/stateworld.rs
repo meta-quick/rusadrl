@@ -39,7 +39,7 @@ pub struct StateWorld {
     pub last_executeTime: i64,
     pub meteredTime: i64,
     pub counter_sequence: VecDeque<i64>,
-    pub slide_window_duration: Duration,
+    pub slide_window_duration: i64,
     pub slide_window_counter: i64,
     pub enabled_slide_window: bool,
     pub operand_referred: HashMap<String,ConstraintRightOperand>,
@@ -175,7 +175,7 @@ impl StateWorld {
     }
 
     pub fn set_slide_window_duration(&mut self, count : i64, duration: Duration) {
-        self.slide_window_duration = duration;
+        self.slide_window_duration = duration.num_milliseconds();
         self.slide_window_counter = count;
     }
 
@@ -193,7 +193,7 @@ impl StateWorld {
             if first.is_none() {
                 break;
             }
-            if now - first.unwrap() > self.slide_window_duration.num_milliseconds() {
+            if now - first.unwrap() > self.slide_window_duration {
                 self.counter_sequence.pop_front();
             } else {
                 break;

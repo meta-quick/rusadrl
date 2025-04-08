@@ -646,7 +646,7 @@ mod tests {
 
         //set world
         let count = CString::new("http://www.w3.org/ns/odrl/2/timeWindow".to_string()).unwrap();
-        let num = CString::new("3/PT1S".to_string()).unwrap();
+        let num = CString::new("3/PT10S".to_string()).unwrap();
         update_odrl_world(handle, count.as_c_str().as_ptr(), num.as_c_str().as_ptr());
 
 
