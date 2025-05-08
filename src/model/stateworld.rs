@@ -17,8 +17,6 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use dashmap::DashMap;
@@ -41,8 +39,8 @@ pub struct StateWorld {
     pub operand_referred: HashMap<String,ConstraintRightOperand>,
     pub assets: HashMap<String, AssetCollection>,
     pub global_policies: HashMap<String, PolicyUnion>,
-    pub success_callback: Option<Arc<Mutex<RefCell<Vec<Box<dyn WorldCallBack>>>>>>,
-    pub failure_callback: Option<Arc<Mutex<RefCell<Vec<Box<dyn WorldCallBack>>>>>>,
+    pub success_callback: Option<Arc<Mutex<Vec<Box<dyn WorldCallBack>>>>>,
+    pub failure_callback: Option<Arc<Mutex<Vec<Box<dyn WorldCallBack>>>>>,
 }
 
 impl StateWorld {
@@ -133,18 +131,18 @@ impl StateWorld {
     pub fn add_callback(&mut self, callback: Box<dyn WorldCallBack>, success: bool) {
         if success {
             if let None = self.success_callback {
-                self.success_callback = Some(Arc::new(Mutex::new(RefCell::new(Vec::new()))));
+                self.success_callback = Some(Arc::new(Mutex::new(Vec::new())));
             }
             let callbacks = self.success_callback.clone().unwrap();
-            let callbacks = callbacks.lock().unwrap();
-            callbacks.borrow_mut().push(callback);
+            let mut callbacks = callbacks.lock().unwrap();
+            callbacks.push(callback);
         } else {
             if let None = self.failure_callback {
-                self.failure_callback = Some(Arc::new(Mutex::new(RefCell::new(Vec::new()))));
+                self.failure_callback = Some(Arc::new(Mutex::new(Vec::new())));
             }
             let callbacks = self.failure_callback.clone().unwrap();
-            let callbacks = callbacks.lock().unwrap();
-            callbacks.borrow_mut().push(callback);
+            let mut callbacks = callbacks.lock().unwrap();
+            callbacks.push(callback);
         }
     }
 
@@ -155,8 +153,7 @@ impl StateWorld {
         }
         let callbacks = callbacks.unwrap();
         let callbacks = callbacks.lock();
-        if let Ok(callbacks) = callbacks {
-           let mut callbacks = callbacks.borrow_mut();
+        if let Ok(mut callbacks) = callbacks {
             for callback in callbacks.iter_mut() {
                 let _ = callback.on_failure(self);
             }
@@ -170,8 +167,7 @@ impl StateWorld {
         }
         let callbacks = callbacks.unwrap();
         let callbacks = callbacks.lock();
-        if let Ok(callbacks) = callbacks {
-           let mut callbacks = callbacks.borrow_mut();
+        if let Ok(mut callbacks) = callbacks {
             for callback in callbacks.iter_mut() {
                 let _ = callback.on_success(self);
             }

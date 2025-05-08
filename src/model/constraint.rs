@@ -16,7 +16,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use std::{cell::RefCell, collections::VecDeque, sync::{Arc, Mutex}};
+use std::{collections::VecDeque, sync::{Arc, Mutex}};
 
 use chrono::Duration;
 use iref::IriBuf;
@@ -52,7 +52,7 @@ pub struct Constraint {
     pub rightOperand: Option<ConstraintRightOperand>,
     pub metadata: Option<Metadata>,
 
-    pub counter_sequence: Arc<Mutex<RefCell<VecDeque<i64>>>>,
+    pub counter_sequence: Arc<Mutex<VecDeque<i64>>>,
     pub slide_window_duration: i64,
     pub slide_window_counter: i64,
     pub enabled_slide_window: bool,
@@ -80,7 +80,7 @@ impl Constraint {
             leftOperand: None,
             rightOperand: None,
             metadata: None,
-            counter_sequence: Arc::new(Mutex::new(RefCell::new(VecDeque::new()))),
+            counter_sequence: Arc::new(Mutex::new(VecDeque::new())),
             slide_window_duration: 0,
             slide_window_counter: 0,
             enabled_slide_window: false,
@@ -122,8 +122,7 @@ impl Constraint {
             return 0;
         }
 
-        let counter = counter.unwrap();
-        let mut counter = counter.borrow_mut();
+        let mut counter = counter.unwrap();
         //check if the window is expired
         loop{
             let first = counter.get(0);
@@ -145,8 +144,7 @@ impl Constraint {
         if counter.is_err() {
             return;
         }
-        let counter = counter.unwrap();
-        let mut counter = counter.borrow_mut();
+        let mut counter = counter.unwrap();
         counter.push_back(c);
     }
 }
