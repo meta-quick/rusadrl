@@ -120,8 +120,10 @@ pub mod ffi {
             //update last execute time only when result is ok
             let result = result.unwrap();
             if result == true {
-                world.update_slide_window();
+                world.trigger_callback_on_success();
                 world.update_last_execute_time();
+            }else{
+                world.trigger_callback_on_failure();
             }
 
             return result as i32;
@@ -624,9 +626,9 @@ mod tests {
                              "constraint": [
                                 {
                                     "leftOperand":"timeWindow",
-                                    "operator": "gt",
+                                    "operator": "eq",
                                     "dataType": "duration",
-                                    "rightOperand": "0"
+                                    "rightOperand": "3/PT10S"
                                 }
                                 ]
                             }
@@ -645,9 +647,9 @@ mod tests {
         let mut req = OdrlRequest::default();
 
         //set world
-        let count = CString::new("http://www.w3.org/ns/odrl/2/timeWindow".to_string()).unwrap();
-        let num = CString::new("3/PT10S".to_string()).unwrap();
-        update_odrl_world(handle, count.as_c_str().as_ptr(), num.as_c_str().as_ptr());
+        // let count = CString::new("http://www.w3.org/ns/odrl/2/timeWindow".to_string()).unwrap();
+        // let num = CString::new("3/PT10S".to_string()).unwrap();
+        // update_odrl_world(handle, count.as_c_str().as_ptr(), num.as_c_str().as_ptr());
 
 
         req.set_action(to_iri("http://www.w3.org/ns/odrl/2/use"));
@@ -663,7 +665,7 @@ mod tests {
         println!("result: {:?}", result);
         let result = ffi::Engine::policy_evaluate(handle,req.clone());
         println!("result: {:?}", result);
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_secs(10));
         let result = ffi::Engine::policy_evaluate(handle,req.clone());
         println!("result: {:?}", result);
         let result = ffi::Engine::policy_evaluate(handle,req.clone());

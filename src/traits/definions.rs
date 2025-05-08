@@ -19,3 +19,8 @@ use crate::model::stateworld::StateWorld;
 pub trait LogicEval {
     fn eval(&self, world: &mut StateWorld) -> Result<bool, anyhow::Error>;
 }
+
+pub trait WorldCallBack: Send + Sync {
+    fn on_success(&mut self, world: &mut StateWorld) -> Result<(), anyhow::Error>;
+    fn on_failure(&mut self, world: &mut StateWorld) -> Result<(), anyhow::Error>;
+}

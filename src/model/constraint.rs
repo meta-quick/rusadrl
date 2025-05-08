@@ -16,15 +16,18 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+use std::{cell::RefCell, collections::VecDeque, sync::{Arc, Mutex}};
+
+use chrono::Duration;
 use iref::IriBuf;
 use lombok::{Builder, Getter, GetterMut, Setter};
-use crate::config;
+use crate::{config, traits::definions::WorldCallBack};
 use crate::model::constraint_operator::ConstraintLogicOperator;
 use crate::model::data_type::DataType;
 use crate::model::metadata::Metadata;
 use crate::model::stateworld::StateWorld;
 use crate::traits::definions::LogicEval;
-use super::{constraint_left_operand::ConstraintLeftOperand, constraint_operator::ConstraintOperator, constraint_right_operand::ConstraintRightOperand};
+use super::{constraint_left_operand::{parse_xml_duration, ConstraintLeftOperand}, constraint_operator::ConstraintOperator, constraint_right_operand::ConstraintRightOperand};
 
 //Identifier:	http://www.w3.org/ns/odrl/2/Constraint
 #[derive(Debug,Builder,Getter,GetterMut,Setter, Clone)]
@@ -48,6 +51,11 @@ pub struct Constraint {
     pub leftOperand: Option<ConstraintLeftOperand>,
     pub rightOperand: Option<ConstraintRightOperand>,
     pub metadata: Option<Metadata>,
+
+    pub counter_sequence: Arc<Mutex<RefCell<VecDeque<i64>>>>,
+    pub slide_window_duration: i64,
+    pub slide_window_counter: i64,
+    pub enabled_slide_window: bool,
 }
 
 impl Default for Constraint {
@@ -72,7 +80,86 @@ impl Constraint {
             leftOperand: None,
             rightOperand: None,
             metadata: None,
+            counter_sequence: Arc::new(Mutex::new(RefCell::new(VecDeque::new()))),
+            slide_window_duration: 0,
+            slide_window_counter: 0,
+            enabled_slide_window: false,
         }
+    }
+
+    pub fn set_slide_window(&mut self, slide: String) {
+        //slide format: count/duration
+        let parts = slide.split('/').collect::<Vec<&str>>();
+        if parts.len() != 2 {
+            return;
+        }
+
+        let count = parts[0].parse::<i64>();
+        if count.is_err() {
+            return;
+        }
+        let count = count.unwrap();
+
+        let duration = parse_xml_duration(parts[1]);
+        if duration.is_err() {
+            return;
+        }
+        let duration = duration.unwrap();
+
+        self.update_slide_window_duration(count, duration);
+    }
+
+    pub fn update_slide_window_duration(&mut self, count : i64, duration: Duration) {
+        self.slide_window_duration = duration.num_milliseconds();
+        self.slide_window_counter = count;
+    }
+
+    pub fn calc_slide_window(&self) -> i64 {
+        //calc left window
+        let now = chrono::Utc::now().timestamp_millis();
+        let counter = self.counter_sequence.lock();
+        if counter.is_err() {
+            return 0;
+        }
+
+        let counter = counter.unwrap();
+        let mut counter = counter.borrow_mut();
+        //check if the window is expired
+        loop{
+            let first = counter.get(0);
+            if first.is_none() {
+                break;
+            }
+            if now - first.unwrap() > self.slide_window_duration {
+                counter.pop_front();
+            } else {
+                break;
+            }
+        }
+
+        self.slide_window_counter - counter.len() as i64
+    }
+
+    pub fn add_counter(&mut self, c: i64) {
+        let counter = self.counter_sequence.lock();
+        if counter.is_err() {
+            return;
+        }
+        let counter = counter.unwrap();
+        let mut counter = counter.borrow_mut();
+        counter.push_back(c);
+    }
+}
+
+impl WorldCallBack for Constraint {
+    fn on_success(&mut self, world: &mut StateWorld) -> Result<(), anyhow::Error> {
+        self.add_counter(world.now());
+        Ok(())
+    }
+
+    fn on_failure(&mut self, _world: &mut StateWorld) -> Result<(), anyhow::Error> {
+        //do nothing
+        Ok(())
     }
 }
 
@@ -95,10 +182,12 @@ impl LogicEval for Constraint {
         let right = right.unwrap();
 
         if let ConstraintLeftOperand::timeWindow = left {
-            return if world.enabled_slide_window {
-                let cap = world.calc_slide_window();
+            return if self.enabled_slide_window {
+                let cap = self.calc_slide_window();
+                world.add_callback(Box::new(self.clone()), true);
                 Ok(cap > 0)
             } else {
+                world.add_callback(Box::new(self.clone()), false);
                 Ok(false)
             }
         }
@@ -186,7 +275,7 @@ impl LogicEval for LogicConstraint {
                 return Ok(false);
             }
             ConstraintLogicOperator::xone => {
-                let operands = &self.get_operands().unwrap();
+                let operands = self.get_operands().unwrap();
                 let mut count = 0;
                 for operand in operands {
                     let ret = operand.eval(&mut world);
@@ -204,7 +293,7 @@ impl LogicEval for LogicConstraint {
             }
             ConstraintLogicOperator::andSequence |
             ConstraintLogicOperator::and => {
-                let operands = &self.get_operands().unwrap();
+                let operands = self.get_operands().unwrap();
                 for operand in operands {
                     let ret = operand.eval(&mut world);
                     match &ret {
@@ -233,7 +322,7 @@ pub enum ConstraintUnion {
 pub struct ConstraintInference;
 
 impl ConstraintInference {
-    pub fn infer(world: &StateWorld, constraints: &Vec<ConstraintUnion>) -> Result<bool,anyhow::Error> {
+    pub fn infer(world: &mut StateWorld, constraints: &Vec<ConstraintUnion>) -> Result<bool,anyhow::Error> {
         let mut result = true;
         for constraint in constraints {
             let ret =  ConstraintInference::infer_one(world, constraint);
@@ -246,12 +335,12 @@ impl ConstraintInference {
 
         Ok(result)
     }
-    pub fn infer_one(world: &StateWorld, constraint: &ConstraintUnion) -> Result<bool,anyhow::Error> {
+    pub fn infer_one(world: &mut StateWorld, constraint: &ConstraintUnion) -> Result<bool,anyhow::Error> {
         let mut result = true;
         match constraint {
             ConstraintUnion::Constraint(c) => {
-                let mut world = world.clone();
-                let ret = c.eval(&mut world);
+                // let mut world = world.clone();
+                let ret = c.eval(world);
                 match ret {
                     Ok(false) => { result = false; },
                     _ => {
@@ -259,8 +348,8 @@ impl ConstraintInference {
                 }
             }
             ConstraintUnion::LogicConstraint(lc) => {
-                let mut world = world.clone();
-                let ret = lc.eval(&mut world);
+                // let mut world = world.clone();
+                let ret = lc.eval(world);
                 match ret {
                     Ok(false) => { result = false; },
                     _ => {
@@ -280,7 +369,7 @@ mod tests {
     #[test]
     fn test_constraint() {
         let mut world = StateWorld::default();
-        world.add_state("version", "1.0");
+        world.add_state("http://www.w3.org/ns/odrl/2/version", "1.0");
 
         let mut constraint = Constraint::new("http://www.w3.org/ns/odrl/2/Constraint");
         let op: ConstraintOperator = "eq".try_into().unwrap();
@@ -301,7 +390,7 @@ mod tests {
     #[test]
     fn test_logic_constraint() {
         let mut world = StateWorld::default();
-        world.add_state("version", "1.0");
+        world.add_state("http://www.w3.org/ns/odrl/2/version", "1.0");
 
         let mut constraint1 = Constraint::new("http://www.w3.org/ns/odrl/2/Constraint");
         let op: ConstraintOperator = "eq".try_into().unwrap();

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![warn(unused_variables)]
 #![allow(dead_code)]
 #![warn(non_snake_case)]
 #![allow(unused_imports)]
@@ -147,10 +146,16 @@ fn compile_constraint_one(json: &JsonLdConstraint) -> Result<Constraint,anyhow::
     if json.get_left_operand().is_some() {
         let left_operand = json.get_left_operand().clone().unwrap();
         let left_operand_iri = left_operand.get_uid().as_str();
-        if left_operand_iri.contains("timeInterval") || left_operand_iri.contains("timeWindow")  {
+        if left_operand_iri.contains("timeInterval") {
             //adjust operator to gt
             // println!("Adjust operator to gt for {}", left_operand_iri);
             constraint.set_operator(Some(ConstraintOperator::gt));
+        }
+
+        if left_operand_iri.contains("timeWindow")  {
+            //adjust operator to gt
+            constraint.set_operator(Some(ConstraintOperator::gt));
+            constraint.enabled_slide_window = true;
         }
 
         let left_operand = ConstraintLeftOperand::try_from(left_operand_iri)?;
@@ -163,6 +168,16 @@ fn compile_constraint_one(json: &JsonLdConstraint) -> Result<Constraint,anyhow::
     if json.get_right_operand().is_some() {
         let right_operand = json.get_right_operand().clone().unwrap();
         constraint.set_rightOperand(to_right_operand(right_operand).ok());
+
+        if constraint.enabled_slide_window {
+            match constraint.rightOperand {
+              Some(ref right) => {
+                  let val = right.get_value().clone().unwrap();
+                  constraint.set_slide_window(val);
+              }
+              None => {}
+            }
+        }
     } else if json.get_right_operand_reference().is_some() {
         let right_operand_ref = json.get_right_operand_reference().clone().unwrap();
         constraint.set_rightOperand(to_right_operand_reference(right_operand_ref).ok());
@@ -1022,6 +1037,6 @@ mod tests {
 
         let policy = OdrlLoader::parse(expanded).await;
 
-        let policy = OdrlLoader::compile(&mut policy.unwrap()).await;
+        let _policy = OdrlLoader::compile(&mut policy.unwrap()).await;
     }
 }

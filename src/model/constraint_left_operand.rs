@@ -168,6 +168,7 @@ pub enum ConstraintLeftOperand {
     version,
     //http://www.w3.org/ns/odrl/2/virtualLocation
     virtualLocation,
+    //http://www.w3.org/ns/odrl/2/timeWindow
     timeWindow
 }
 
@@ -250,7 +251,8 @@ impl  ConstraintLeftOperand {
                 Ok(val)
             }
             ConstraintLeftOperand::timeWindow => {
-                let time_window = world.calc_slide_window();
+                //Just working
+                let time_window = 0;
                 let mut val = OperandValue::default();
                 val.set_ty(OperandValueType::string);
                 val.set_sval(Some(time_window.to_string()));
